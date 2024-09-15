@@ -254,7 +254,7 @@ void Client::Timeline(const std::string& username) {
     ClientContext context;
     std::shared_ptr<ClientReaderWriter<Message, Message>> stream(stub_->Timeline(&context));
     std::thread writer_thread ([stream, &username]() {
-        Message message = MakeMessage(username, "Get Timeline");
+        Message message = MakeMessage(username, "Timeline");
         stream->Write(message);
         while(true) {
           std::string text = getPostMessage();
@@ -267,9 +267,13 @@ void Client::Timeline(const std::string& username) {
     std::thread reader_thread ([stream, username]() {
       Message incomingMessage;
       while (stream->Read(&incomingMessage)) {
+        // if (incomingMessage.username().compare("$$TIMELINE$$") == 0) {
+        //   std::cout<<incomingMessage.
+        // } else {
           google::protobuf::Timestamp timestamp = incomingMessage.timestamp();
           std::time_t time = timestamp.seconds();
           displayPostMessage(incomingMessage.username(), incomingMessage.msg(), time);  // Show the retrieved message
+        // }
       }
     });
     writer_thread.join();
