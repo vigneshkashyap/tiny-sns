@@ -46,14 +46,16 @@
 #include <memory>
 #include <string>
 
-#include "json.hpp"
+// #include "json.hpp"
 #define log(severity, msg) \
     LOG(severity) << msg;  \
     google::FlushLogFiles(google::severity);
 
 #include "sns.grpc.pb.h"
 
-using json = nlohmann::json;
+#define DELIMITER "\x1F"
+
+// using json = nlohmann::json;
 
 using csce662::ListReply;
 using csce662::Message;
@@ -196,88 +198,122 @@ class SNSServiceImpl final : public SNSService::Service {
         return Status::OK;
     }
 
-    google::protobuf::Timestamp *createProtoTimestampFromEpoch(
-        long long epoch_seconds) {
+    google::protobuf::Timestamp *createProtoTimestampFromEpoch(long long epoch_seconds) {
         google::protobuf::Timestamp *ts = new google::protobuf::Timestamp();
         ts->set_seconds(epoch_seconds);
         ts->set_nanos(0);  // Assuming no nanoseconds info
         return ts;
     }
 
-    json parseFileContent(std::string file_path) {
+    std::vector<std::string> split(const std::string &str, const std::string &delimiter) {
+        std::vector<std::string> tokens;
+        size_t start = 0, end = 0;
+        while ((end = str.find(delimiter, start)) != std::string::npos) {
+            tokens.push_back(str.substr(start, end - start));
+            start = end + delimiter.length();
+        }
+        tokens.push_back(str.substr(start));
+        return tokens;
+    }
+
+    std::string decodeNewLineChar(const std::string &content) {
+        std::string decoded_content = content;
+        size_t pos = 0;
+        while ((pos = decoded_content.find("\\n", pos)) != std::string::npos) {
+            decoded_content.replace(pos, 2, "\n");
+            pos += 1;  // Move past the replaced "\n"
+        }
+        return decoded_content;
+    }
+
+    std::string encodeNewLineChar(const std::string &content) {
+        std::string encoded_content = content;
+        size_t pos = 0;
+        while ((pos = encoded_content.find('\n', pos)) != std::string::npos) {
+            encoded_content.replace(pos, 1, "\\n");
+            pos += 2;  // Move past the replaced "\n"
+        }
+        return encoded_content;
+    }
+
+    std::vector<Post> parseFileContent(const std::string &file_path) {
         std::ifstream file(file_path);
-        json file_json;
+        std::vector<Post> posts;
         if (!file) {
             log(ERROR, "Error opening file: " + file_path);
-            return file_json;
+            return posts;
         }
         if (file.peek() == std::ifstream::traits_type::eof()) {
-            file_json = json::array();  // Empty file, initialize as empty array
             log(ERROR, "File is empty: " + file_path);
-        } else {
-            file.seekg(0);
-            try {
-                file >> file_json;  // Read existing JSON data
-            } catch (const json::parse_error &e) {
-                log(ERROR, "JSON parsing error: " + std::string(e.what()));
-                file_json = json::array();  // On error, treat it as empty array
+            return posts;
+        }
+        std::string line;
+        while (std::getline(file, line)) {
+            auto tokens = split(line, DELIMITER);
+            if (tokens.size() == 3) {
+                Post post;
+                post.username = tokens[0];
+                post.content = decodeNewLineChar(tokens[1]);
+                try {
+                    post.timestamp = std::stoll(tokens[2]);
+                } catch (const std::exception &e) {
+                    log(ERROR, "Error converting timestamp: " + std::string(e.what()));
+                    continue;  // Skip this line if conversion fails
+                }
+                posts.push_back(post);
+            } else {
+                log(ERROR, "Invalid data format in file: " + file_path);
             }
         }
         file.close();
-        return file_json;
+        return posts;
     }
 
-    void addToFile(std::string file_path, json new_post) {
-        json file_json = parseFileContent(file_path);
-        // Append the new post to the JSON array
-        file_json.push_back(new_post);
+    void addToFile(std::string file_path, Message message) {
+        Post post;
+        post.username = message.username();
+        post.content = message.msg();
+        post.timestamp = message.timestamp().seconds();
         // Overwrite the file with updated JSON
-        std::ofstream file(file_path, std::ios::out);
+        std::ofstream file(file_path, std::ios::app);
         if (!file) {
             log(ERROR, "Error opening file: " + file_path);
             return;
         }
-        file << file_json.dump(4);  // Pretty print with 4 spaces indentation
+        file << post.username << DELIMITER
+             << encodeNewLineChar(post.content) << DELIMITER
+             << post.timestamp << std::endl;
         file.close();
     }
 
     void removePostsFromTimeline(const std::string username, const std::string unfollowed_user) {
-        std::string timeline_path = "./timeline_" + username + ".json";
-        json timeline_json = parseFileContent(timeline_path);
-        std::vector<Post> posts;
-        // Load messages from JSON
-        for (const auto &item : timeline_json) {
-            Post post;
-            post.username = item["username"].get<std::string>();
-            post.content = item["content"].get<std::string>();
-            post.timestamp = item["timestamp"].get<long long>();
+        std::string timeline_path = "./timeline_" + username + ".txt";
+        std::vector<Post> posts = parseFileContent(timeline_path);
+        std::vector<Post> new_posts;
+        for (const auto &post : posts) {
             // Filter out unfollowed users
             if (post.username != unfollowed_user) {
-                posts.push_back(post);
+                new_posts.push_back(post);
             }
         }
-        // Create a new JSON array with the filtered and sorted messages
-        json filtered_timeline = json::array();
-        for (const auto &post : posts) {
-            filtered_timeline.push_back({{"username", post.username},
-                                         {"content", post.content},
-                                         {"timestamp", post.timestamp}});
-        }
-        // Write the updated JSON data back to the file
         std::ofstream Timeline(timeline_path);
         if (!Timeline.is_open()) {
             std::cerr << "Error opening file for writing." << std::endl;
             return;
         }
         log(INFO, "We have removed the " + unfollowed_user + "'s posts from " + username + "'s timeline");
-        Timeline << filtered_timeline.dump(4);  // Pretty print with 4 spaces
-        Timeline.close();                       // Close the file after writing
+        for (const auto &post : new_posts) {
+            Timeline << post.username << DELIMITER
+                     << encodeNewLineChar(post.content) << DELIMITER
+                     << post.timestamp << std::endl;
+        }
+        Timeline.close();  // Close the file after writing
     }
 
     void truncateFile(const std::string username) {
         // Open the file in truncate mode
-        std::string timeline_path = "./timeline_" + username + ".json";
-        std::string posts_path = "./posts_" + username + ".json";
+        std::string timeline_path = "./timeline_" + username + ".txt";
+        std::string posts_path = "./posts_" + username + ".txt";
         std::ofstream timeline(timeline_path, std::ios::trunc);
         std::ofstream post(posts_path, std::ios::trunc);
         if (!timeline) {
@@ -290,21 +326,15 @@ class SNSServiceImpl final : public SNSService::Service {
             return;
         }
         log(INFO, "Truncated file: " + posts_path);
+        timeline.close();
+        post.close();
     }
 
     void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user) {
-        std::string timeline_path = "./timeline_" + user->username + ".json";
-        json timeline_json = parseFileContent(timeline_path);
+        std::string timeline_path = "./timeline_" + user->username + ".txt";
+        std::vector<Post> posts = parseFileContent(timeline_path);
         log(INFO, "Read the timeline file");
-        std::vector<Post> posts;
         // Load messages from JSON
-        for (const auto &item : timeline_json) {
-            Post post;
-            post.username = item["username"].get<std::string>();
-            post.content = item["content"].get<std::string>();
-            post.timestamp = item["timestamp"].get<long long>();
-            posts.push_back(post);
-        }
         auto compareByTimestamp = [](const Post &a, const Post &b) {
             return a.timestamp > b.timestamp;
         };
@@ -330,32 +360,27 @@ class SNSServiceImpl final : public SNSService::Service {
 
     void makePost(Message message, Client *user) {
         std::string content = message.msg();
-        std::string file_path = "./posts_" + user->username + ".json";
+        std::string file_path = "./posts_" + user->username + ".txt";
         google::protobuf::Timestamp temptime = message.timestamp();
         google::protobuf::Timestamp *ts_ptr = new google::protobuf::Timestamp();
         ts_ptr->CopyFrom(temptime);  // Copy the contents of temptime
-        long long epoch_time = temptime.seconds();
         Message new_post;
         new_post.set_allocated_timestamp(ts_ptr);
+        new_post.set_msg(content);
+        new_post.set_username(user->username);
         for (Client *follower : user->client_followers) {
             // Send it to all followers
-            new_post.set_msg(content);
-            new_post.set_username(user->username);
             if (follower->stream) {
                 log(INFO, "Streaming " + message.msg() + " from " + message.username() + " to " + follower->username);
                 follower->stream->Write(new_post);
             }
-            std::string follower_timeline_path = "./timeline_" + follower->username + ".json";
-            std::string posts_file_path = "./posts_" + user->username + ".json";
-            json new_post = {
-                {"username", user->username},
-                {"content", content},
-                {"timestamp", epoch_time}  // Use the current time directly
-            };
+            std::string follower_timeline_path = "./timeline_" + follower->username + ".txt";
             log(INFO, "Saving " + message.msg() + " from " + message.username() + " to " + follower->username + " in timeline");
             addToFile(follower_timeline_path, new_post);
-            addToFile(posts_file_path, new_post);
+
         }
+        std::string posts_file_path = "./posts_" + user->username + ".txt";
+        addToFile(posts_file_path, new_post);
     }
 
     Status Timeline(ServerContext *context, ServerReaderWriter<Message, Message> *stream) override {
