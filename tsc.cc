@@ -109,6 +109,7 @@ IReply Client::List() {
     Request request;
     ClientContext context;
     IReply ire;
+    request.set_username(username);
     ListReply reply;
     grpc::Status status = stub_->List(&context, request, &reply);
     ire.grpc_status = status;
@@ -168,16 +169,10 @@ IReply Client::Login() {
     grpc::Status status = stub_->Login(&context, request, &reply);
     ire.grpc_status = status;
     grpc::StatusCode status_code = status.error_code();
-    // ire.comm_status = reply.comm_status();
-    // ire.grpc_status =
-    // int comm_status_int = reply.comm_status();
-    // IStatus comm_status = static_cast<IStatus>(comm_status_int);
-    // ire.comm_status = comm_status;
     if (!status.ok()) {
         grpc::StatusCode status_code = status.error_code();
         if (status_code == grpc::StatusCode::ALREADY_EXISTS) {
             ire.comm_status = FAILURE_INVALID_USERNAME;
-            // ire.grpc_statu = grpc::Status::OK;
         } else {
             ire.comm_status = FAILURE_INVALID;
         }
