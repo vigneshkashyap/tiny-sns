@@ -61,8 +61,6 @@ PROTOBUF_CONSTEXPR Reply::Reply(
     &::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized {}
   }
 
-  , /*decltype(_impl_.comm_status_)*/ 0
-
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct ReplyDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ReplyDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
@@ -134,7 +132,6 @@ const ::uint32_t TableStruct_sns_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(
     ~0u,  // no _inlined_string_donated_
     ~0u,  // no _split_
     ~0u,  // no sizeof(Split)
-    PROTOBUF_FIELD_OFFSET(::csce662::Reply, _impl_.comm_status_),
     PROTOBUF_FIELD_OFFSET(::csce662::Reply, _impl_.msg_),
     PROTOBUF_FIELD_OFFSET(::csce662::Message, _impl_._has_bits_),
     PROTOBUF_FIELD_OFFSET(::csce662::Message, _internal_metadata_),
@@ -157,7 +154,7 @@ static const ::_pbi::MigrationSchema
         { 0, -1, -1, sizeof(::csce662::ListReply)},
         { 10, -1, -1, sizeof(::csce662::Request)},
         { 20, -1, -1, sizeof(::csce662::Reply)},
-        { 30, 41, -1, sizeof(::csce662::Message)},
+        { 29, 40, -1, sizeof(::csce662::Message)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -170,17 +167,17 @@ const char descriptor_table_protodef_sns_2eproto[] PROTOBUF_SECTION_VARIABLE(pro
     "\n\tsns.proto\022\007csce662\032\037google/protobuf/ti"
     "mestamp.proto\"1\n\tListReply\022\021\n\tall_users\030"
     "\001 \003(\t\022\021\n\tfollowers\030\002 \003(\t\".\n\007Request\022\020\n\010u"
-    "sername\030\001 \001(\t\022\021\n\targuments\030\002 \003(\t\")\n\005Repl"
-    "y\022\023\n\013comm_status\030\001 \001(\005\022\013\n\003msg\030\002 \001(\t\"W\n\007M"
-    "essage\022\020\n\010username\030\001 \001(\t\022\013\n\003msg\030\002 \001(\t\022-\n"
-    "\ttimestamp\030\003 \001(\0132\032.google.protobuf.Times"
-    "tamp2\375\001\n\nSNSService\022+\n\005Login\022\020.csce662.R"
-    "equest\032\016.csce662.Reply\"\000\022.\n\004List\022\020.csce6"
-    "62.Request\032\022.csce662.ListReply\"\000\022,\n\006Foll"
-    "ow\022\020.csce662.Request\032\016.csce662.Reply\"\000\022."
-    "\n\010UnFollow\022\020.csce662.Request\032\016.csce662.R"
-    "eply\"\000\0224\n\010Timeline\022\020.csce662.Message\032\020.c"
-    "sce662.Message\"\000(\0010\001b\006proto3"
+    "sername\030\001 \001(\t\022\021\n\targuments\030\002 \003(\t\"\024\n\005Repl"
+    "y\022\013\n\003msg\030\002 \001(\t\"W\n\007Message\022\020\n\010username\030\001 "
+    "\001(\t\022\013\n\003msg\030\002 \001(\t\022-\n\ttimestamp\030\003 \001(\0132\032.go"
+    "ogle.protobuf.Timestamp2\375\001\n\nSNSService\022+"
+    "\n\005Login\022\020.csce662.Request\032\016.csce662.Repl"
+    "y\"\000\022.\n\004List\022\020.csce662.Request\032\022.csce662."
+    "ListReply\"\000\022,\n\006Follow\022\020.csce662.Request\032"
+    "\016.csce662.Reply\"\000\022.\n\010UnFollow\022\020.csce662."
+    "Request\032\016.csce662.Reply\"\000\0224\n\010Timeline\022\020."
+    "csce662.Message\032\020.csce662.Message\"\000(\0010\001b"
+    "\006proto3"
 };
 static const ::_pbi::DescriptorTable* const descriptor_table_sns_2eproto_deps[1] =
     {
@@ -190,7 +187,7 @@ static ::absl::once_flag descriptor_table_sns_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_sns_2eproto = {
     false,
     false,
-    548,
+    527,
     descriptor_table_protodef_sns_2eproto,
     "sns.proto",
     &descriptor_table_sns_2eproto_once,
@@ -697,8 +694,6 @@ Reply::Reply(const Reply& from)
   new (&_impl_) Impl_{
       decltype(_impl_.msg_) {}
 
-    , decltype(_impl_.comm_status_) {}
-
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -709,7 +704,6 @@ Reply::Reply(const Reply& from)
   if (!from._internal_msg().empty()) {
     _this->_impl_.msg_.Set(from._internal_msg(), _this->GetArenaForAllocation());
   }
-  _this->_impl_.comm_status_ = from._impl_.comm_status_;
   // @@protoc_insertion_point(copy_constructor:csce662.Reply)
 }
 
@@ -717,8 +711,6 @@ inline void Reply::SharedCtor(::_pb::Arena* arena) {
   (void)arena;
   new (&_impl_) Impl_{
       decltype(_impl_.msg_) {}
-
-    , decltype(_impl_.comm_status_) { 0 }
 
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -753,7 +745,6 @@ void Reply::Clear() {
   (void) cached_has_bits;
 
   _impl_.msg_.ClearToEmpty();
-  _impl_.comm_status_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -763,15 +754,6 @@ const char* Reply::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
     ::uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // int32 comm_status = 1;
-      case 1:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::uint8_t>(tag) == 8)) {
-          _impl_.comm_status_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
-        } else {
-          goto handle_unusual;
-        }
-        continue;
       // string msg = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::uint8_t>(tag) == 18)) {
@@ -812,13 +794,6 @@ failure:
   ::uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // int32 comm_status = 1;
-  if (this->_internal_comm_status() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(
-        1, this->_internal_comm_status(), target);
-  }
-
   // string msg = 2;
   if (!this->_internal_msg().empty()) {
     const std::string& _s = this->_internal_msg();
@@ -849,12 +824,6 @@ failure:
                                     this->_internal_msg());
   }
 
-  // int32 comm_status = 1;
-  if (this->_internal_comm_status() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(
-        this->_internal_comm_status());
-  }
-
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -875,9 +844,6 @@ void Reply::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF
 
   if (!from._internal_msg().empty()) {
     _this->_internal_set_msg(from._internal_msg());
-  }
-  if (from._internal_comm_status() != 0) {
-    _this->_internal_set_comm_status(from._internal_comm_status());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -900,8 +866,6 @@ void Reply::InternalSwap(Reply* other) {
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.msg_, lhs_arena,
                                        &other->_impl_.msg_, rhs_arena);
-
-  swap(_impl_.comm_status_, other->_impl_.comm_status_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata Reply::GetMetadata() const {

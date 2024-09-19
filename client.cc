@@ -1,10 +1,9 @@
 #include "client.h"
 
 void IClient::run() {
-    IReply reply = connectTo();
-    if (reply.comm_status != SUCCESS) {
-        std::cout << "connection failed: " << reply.comm_status << std::endl;
-        displayCommandReply("", reply);
+  int ret = connectTo();
+  if (ret < 0) {
+    std::cout << "connection failed: " << ret << std::endl;
         exit(1);
     }
     displayTitle();

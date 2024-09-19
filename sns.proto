@@ -54,7 +54,7 @@ message Request {
   repeated string arguments = 2;
 }
 
-message Reply { int32 comm_status = 1; string msg = 2; }
+message Reply { string msg = 2; }
 
 message Message {
   // Username who sent the message

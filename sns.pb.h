@@ -616,7 +616,6 @@ class Reply final :
 
   enum : int {
     kMsgFieldNumber = 2,
-    kCommStatusFieldNumber = 1,
   };
   // string msg = 2;
   void clear_msg() ;
@@ -638,16 +637,6 @@ class Reply final :
   std::string* _internal_mutable_msg();
 
   public:
-  // int32 comm_status = 1;
-  void clear_comm_status() ;
-  ::int32_t comm_status() const;
-  void set_comm_status(::int32_t value);
-
-  private:
-  ::int32_t _internal_comm_status() const;
-  void _internal_set_comm_status(::int32_t value);
-
-  public:
   // @@protoc_insertion_point(class_scope:csce662.Reply)
  private:
   class _Internal;
@@ -657,7 +646,6 @@ class Reply final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr msg_;
-    ::int32_t comm_status_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1217,26 +1205,6 @@ Request::_internal_mutable_arguments() {
 // -------------------------------------------------------------------
 
 // Reply
-
-// int32 comm_status = 1;
-inline void Reply::clear_comm_status() {
-  _impl_.comm_status_ = 0;
-}
-inline ::int32_t Reply::comm_status() const {
-  // @@protoc_insertion_point(field_get:csce662.Reply.comm_status)
-  return _internal_comm_status();
-}
-inline void Reply::set_comm_status(::int32_t value) {
-  _internal_set_comm_status(value);
-  // @@protoc_insertion_point(field_set:csce662.Reply.comm_status)
-}
-inline ::int32_t Reply::_internal_comm_status() const {
-  return _impl_.comm_status_;
-}
-inline void Reply::_internal_set_comm_status(::int32_t value) {
-  ;
-  _impl_.comm_status_ = value;
-}
 
 // string msg = 2;
 inline void Reply::clear_msg() {

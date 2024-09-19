@@ -117,19 +117,20 @@ class SNSServiceImpl final : public SNSService::Service {
         std::string username2 = request->arguments().Get(0);
         if (username.compare(username2) == 0) {
             log(INFO, "Invalid username, already exists");
-            reply->set_comm_status(1);
+            reply->set_msg("1");
             return Status::OK;
-            // return Status(grpc::StatusCode::ALREADY_EXISTS, "Invalid
-            // Username");
+            // return Status(grpc::StatusCode::ALREADY_EXISTS, "Invalid Username, already exists");
         }
         Client *user1 = getClient(username);
         Client *user2 = getClient(username2);
         if (user1 == NULL || user2 == NULL) {
-            log(INFO, "Invalid username, already exists");
-            reply->set_comm_status(3);
+            log(INFO, "Invalid username");
+            reply->set_msg("3");
             return Status::OK;
+            // return Status(grpc::StatusCode::ALREADY_EXISTS, "Invalid Username, already exists");
         }
-        reply->set_comm_status(0);
+        // reply->set_comm_status(0);
+        reply->set_msg("0");
         user1->client_following.push_back(user2);
         user2->client_followers.push_back(user1);
         return Status::OK;
@@ -140,7 +141,7 @@ class SNSServiceImpl final : public SNSService::Service {
         std::string username2 = request->arguments().Get(0);
         if (username.compare(username2) == 0) {
             log(INFO, "Username are the same");
-            reply->set_comm_status(3);
+            reply->set_msg("3");
             return Status::OK;
         }
         Client *user1 = getClient(username);
@@ -166,7 +167,7 @@ class SNSServiceImpl final : public SNSService::Service {
         log(INFO, "Got the Index");
         log(INFO, "Indexes: " + follower_index + following_index);
         if (following_index == -1 || follower_index == -1) {
-            reply->set_comm_status(3);
+            reply->set_msg("3");
             return Status::OK;
         }
         log(INFO, "Follower Index" + follower_index + following_index);
@@ -174,7 +175,7 @@ class SNSServiceImpl final : public SNSService::Service {
         removePostsFromTimeline(user1->username, user2->username);
         user1->client_following.erase(user1->client_following.begin() + following_index);
         user2->client_followers.erase(user2->client_followers.begin() + follower_index);
-        reply->set_comm_status(0);
+        reply->set_msg("0");
         return Status::OK;
     }
 
@@ -184,8 +185,8 @@ class SNSServiceImpl final : public SNSService::Service {
             if (client->username == request->username()) {
                 reply->set_msg("Username already exists");
                 log(INFO, "Username already exists\t" + request->username());
-                reply->set_comm_status(1);
-                return Status::OK;
+                reply->set_msg("1");
+                return Status(grpc::StatusCode::ALREADY_EXISTS, "Username already exists");;
             }
         }
         Client *client = new Client();
