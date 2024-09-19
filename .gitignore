@@ -1,2 +1,5 @@
 *.txt
 *.json
+client-1.cc
+sns-1.proto
+tsc-1.cc
