@@ -46,6 +46,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <filesystem>
 
 // #include "json.hpp"
 #define log(severity, msg) \
@@ -94,6 +95,7 @@ struct Post {
 
 // Vector that stores every client that has been created
 std::vector<Client *> client_db;
+ServerInfo serverInfo;
 
 class SNSServiceImpl final : public SNSService::Service {
     Client *getClient(std::string username) {
@@ -104,6 +106,12 @@ class SNSServiceImpl final : public SNSService::Service {
         }
         return NULL;
     }
+
+    std::string filePrefix(std::string username) {
+        return "server_" + std::to_string(serverInfo.clusterid()) + "_" +
+                         std::to_string(serverInfo.serverid()) + "/" + username;
+    }
+
     Status List(ServerContext *context, const Request *request, ListReply *list_reply) override {
         std::string curr_username = request->username();
         // Iterate over the Client DB and add all usernames, and their followers
@@ -153,6 +161,12 @@ class SNSServiceImpl final : public SNSService::Service {
         reply->set_msg("0");
         user->client_following.push_back(to_follow);
         to_follow->client_followers.push_back(user);
+        std::ofstream following(filePrefix(user->username) + "_following.txt", std::ios::app);
+        std::ofstream followers(filePrefix(to_follow->username) + "_follower.txt", std::ios::app);
+        following << to_follow->username << std::endl;
+        followers << user->username << std::endl;
+        following.close();
+        followers.close();
         return Status::OK;
     }
 
@@ -203,21 +217,52 @@ class SNSServiceImpl final : public SNSService::Service {
         user->client_following.erase(user->client_following.begin() + following_index);
         // We need to remove the user from the to_unfollow_user's following vector using follower_index
         to_unfollow_user->client_followers.erase(to_unfollow_user->client_followers.begin() + follower_index);
+
+        removeFromFollowLists(user->username, to_unfollow_user->username);
+
         log(INFO, "Unfollow Successful:\t\tUser " + curr_user + " unfollowed " + username);
         // We return the success code -> 0 SUCCESS
         reply->set_msg("0");
         return Status::OK;
     }
 
+    void removeFromFollowLists(const std::string &username, const std::string &to_remove) {
+        std::string following_filename = filePrefix(username) + "_following.txt";
+        std::string follower_filename = filePrefix(to_remove) + "_follower.txt";
+
+        // Helper lambda to check if an entry should be removed
+        auto shouldRemove = [&](const std::string &entry) {
+            return entry == to_remove;
+        };
+
+        auto writeEntry = [](std::ofstream &file_out, const std::string &entry) {
+            file_out << entry << std::endl;
+        };
+
+        auto parseEntry = [](const std::string &line) {
+            return line;  // Each line is simply a username in this case
+        };
+
+        // Remove from the following file of the user
+        removeEntries<std::string>(following_filename, shouldRemove, writeEntry, parseEntry);
+
+        // Now remove the user from the follower file of the to_remove user
+        auto shouldRemoveFollower = [&](const std::string &entry) {
+            return entry == username;  // Reverse: remove username from the follower file of to_remove
+        };
+
+        removeEntries<std::string>(follower_filename, shouldRemoveFollower, writeEntry, parseEntry);
+    }
+
     // RPC Login
     Status Login(ServerContext *context, const Request *request, Reply *reply) override {
         // We go over the client_db to check if username already exists, and accordingly return a grpc::Status::ALREADY_EXISTS
-        Client *user_index = find_user(request->username());
-        if (user_index == NULL) {
-                reply->set_msg("Username already exists");
-                log(ERROR, "Login Failed:\t\tUsername " + request->username() + " already exists");
-                reply->set_msg("1");
-                return Status(grpc::StatusCode::ALREADY_EXISTS, "Username already exists");
+        Client *user_index = getClient(request->username());
+        if (user_index != NULL) {
+            reply->set_msg("Username already exists");
+            log(ERROR, "Login Failed:\t\tUsername " + request->username() + " already exists");
+            reply->set_msg("1");
+            return Status(grpc::StatusCode::ALREADY_EXISTS, "Username already exists");
         }
         Client *client = new Client();
         client->username = request->username();
@@ -272,40 +317,77 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     // Helper Method to parse the file, and return a vector of posts, that contain the post details
-    std::vector<Post> parseFileContent(const std::string &file_path) {
+    // std::vector<Post> parseFileContent(const std::string &file_path) {
+    //     std::ifstream file(file_path);
+    //     std::vector<Post> posts;
+    //     if (!file) {
+    //         log(ERROR, "Error opening file:\t\t" + file_path);
+    //         return posts;
+    //     }
+    //     if (file.peek() == std::ifstream::traits_type::eof()) {
+    //         log(ERROR, "File is empty:\t\t" + file_path);
+    //         return posts;
+    //     }
+    //     std::string line;
+    //     while (std::getline(file, line)) {
+    //         // Invoke the split helper method to get a vector of strings
+    //         auto tokens = split(line, DELIMITER);
+    //         if (tokens.size() == 3) {
+    //             Post post;
+    //             post.username = tokens[0];
+    //             //
+    //             post.content = decodeNewLineChar(tokens[1]);
+    //             try {
+    //                 // Timestamp in Post struct is long long, hence we convert from string to long long
+    //                 post.timestamp = std::stoll(tokens[2]);
+    //             } catch (const std::exception &e) {
+    //                 log(ERROR, "Error converting timestamp:\t\t" + std::string(e.what()));
+    //                 continue;
+    //             }
+    //             posts.push_back(post);
+    //         } else {
+    //             log(ERROR, "Invalid data format in file:\t\t" + file_path);
+    //         }
+    //     }
+    //     file.close();
+    //     return posts;
+    // }
+    std::vector<Post> parseFileContentForPosts(const std::string &file_path) {
+        auto parseEntry = [this](const std::string &line) {  // Capture this
+            return parsePost(line);  // Call the non-static method
+        };
+        return parseFileContent<Post>(file_path, parseEntry);
+    }
+
+    template <typename T>
+    std::vector<T> parseFileContent(const std::string &file_path,
+                                    std::function<T(const std::string &)> parseEntry) {
         std::ifstream file(file_path);
-        std::vector<Post> posts;
+        std::vector<T> entries;
+
         if (!file) {
             log(ERROR, "Error opening file:\t\t" + file_path);
-            return posts;
+            return entries;
         }
+
         if (file.peek() == std::ifstream::traits_type::eof()) {
             log(ERROR, "File is empty:\t\t" + file_path);
-            return posts;
+            return entries;
         }
+
         std::string line;
         while (std::getline(file, line)) {
-            // Invoke the split helper method to get a vector of strings
-            auto tokens = split(line, DELIMITER);
-            if (tokens.size() == 3) {
-                Post post;
-                post.username = tokens[0];
-                //
-                post.content = decodeNewLineChar(tokens[1]);
-                try {
-                    // Timestamp in Post struct is long long, hence we convert from string to long long
-                    post.timestamp = std::stoll(tokens[2]);
-                } catch (const std::exception &e) {
-                    log(ERROR, "Error converting timestamp:\t\t" + std::string(e.what()));
-                    continue;
-                }
-                posts.push_back(post);
-            } else {
-                log(ERROR, "Invalid data format in file:\t\t" + file_path);
+            try {
+                T entry = parseEntry(line);  // Use the generic parseEntry function
+                entries.push_back(entry);
+            } catch (const std::exception &e) {
+                log(ERROR, "Error parsing line:\t\t" + std::string(e.what()));
+                continue;  // Skip invalid entries
             }
         }
+
         file.close();
-        return posts;
+        return entries;
     }
 
     // Helper Method, to add a new Message file
@@ -329,57 +411,149 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     // Method invoked when unfollowing is successful, from user's timeline, the to_unfollow_user's posts are removed
-    void removePostsFromTimeline(const std::string username, const std::string unfollowed_user) {
-        std::string timeline_path = "./timeline_" + username + ".txt";
-        std::vector<Post> posts = parseFileContent(timeline_path);
-        std::vector<Post> new_posts;
-        for (const auto &post : posts) {
-            // Filter the posts that are not the unfollowed_user's
-            if (post.username != unfollowed_user) {
-                new_posts.push_back(post);
+    // void removePostsFromTimeline(const std::string username, const std::string unfollowed_user) {
+    //     std::string timeline_path = "./timeline_" + username + ".txt";
+    //     std::vector<Post> posts = parseFileContent(timeline_path);
+    //     std::vector<Post> new_posts;
+    //     for (const auto &post : posts) {
+    //         // Filter the posts that are not the unfollowed_user's
+    //         if (post.username != unfollowed_user) {
+    //             new_posts.push_back(post);
+    //         }
+    //     }
+    //     // Open the timeline file and non-append mode, thereby truncating the data
+    //     std::ofstream Timeline(timeline_path);
+    //     if (!Timeline.is_open()) {
+    //         std::cerr << "Error opening file for writing." << std::endl;
+    //         return;
+    //     }
+    //     log(INFO, "Remove Posts:\t\tUser " + unfollowed_user + "'s posts removed from User " + username + "'s timeline");
+    //     // Iterate over all posts and write all posts
+    //     for (const auto &post : new_posts) {
+    //         Timeline << post.username << DELIMITER
+    //                  << encodeNewLineChar(post.content) << DELIMITER
+    //                  << post.timestamp << std::endl;
+    //     }
+    //     Timeline.close();
+    // }
+
+    Post parsePost(const std::string &line) {
+        Post post;
+        auto tokens = split(line, DELIMITER);  // Assuming DELIMITER is '|', or another character
+
+        if (tokens.size() == 3) {
+            post.username = tokens[0];
+            post.content = decodeNewLineChar(tokens[1]);
+
+            try {
+                // Converting string to long long for timestamp
+                post.timestamp = std::stoll(tokens[2]);
+            } catch (const std::exception &e) {
+                log(ERROR, "Error converting timestamp: " + std::string(e.what()));
+                throw;  // Optionally, rethrow or handle accordingly
             }
+        } else {
+            log(ERROR, "Invalid data format in line: " + line);
+            throw std::runtime_error("Invalid format");  // You could handle the error as needed
         }
-        // Open the timeline file and non-append mode, thereby truncating the data
-        std::ofstream Timeline(timeline_path);
-        if (!Timeline.is_open()) {
-            std::cerr << "Error opening file for writing." << std::endl;
-            return;
-        }
-        log(INFO, "Remove Posts:\t\tUser " + unfollowed_user + "'s posts removed from User " + username + "'s timeline");
-        // Iterate over all posts and write all posts
-        for (const auto &post : new_posts) {
-            Timeline << post.username << DELIMITER
+
+        return post;
+    }
+
+    void removePostsFromTimeline(const std::string &username, const std::string &unfollowed_user) {
+        std::string timeline_path = filePrefix(username) + "_timeline.txt";
+
+        // Define the conditions and how to handle each post
+        auto shouldRemove = [&](const Post &post) {
+            return post.username == unfollowed_user;
+        };
+
+        auto writeEntry = [this](std::ofstream &file_out, const Post &post) {
+            file_out << post.username << DELIMITER
                      << encodeNewLineChar(post.content) << DELIMITER
                      << post.timestamp << std::endl;
+        };
+
+        auto parseEntry = [this](const std::string &line) {
+            return parsePost(line);  // Assuming you have a parsePost function to convert a line into a Post object
+        };
+
+        removeEntries<Post>(timeline_path, shouldRemove, writeEntry, parseEntry);
+    }
+
+    template <typename T>
+    void removeEntries(const std::string &filepath, const std::function<bool(const T &)> &shouldRemove, const std::function<void(std::ofstream &, const T &)> &writeEntry, const std::function<T(const std::string &)> &parseEntry) {
+        std::ifstream file_in(filepath);
+
+        if (!file_in.is_open()) {
+            std::cerr << "Unable to open file: " << filepath << std::endl;
+            return;
         }
-        Timeline.close();
+
+        std::vector<T> entries;
+        std::string line;
+
+        // Read all lines and parse them into entries
+        while (std::getline(file_in, line)) {
+            T entry = parseEntry(line);
+            // Filter out entries that match the removal condition
+            if (!shouldRemove(entry)) {
+                entries.push_back(entry);
+            }
+        }
+        file_in.close();
+
+        // Rewrite the file with the filtered entries
+        std::ofstream file_out(filepath, std::ios::trunc);
+        if (!file_out.is_open()) {
+            std::cerr << "Unable to open file for writing: " << filepath << std::endl;
+            return;
+        }
+
+        for (const auto &entry : entries) {
+            writeEntry(file_out, entry);
+        }
+
+        file_out.close();
     }
 
     // When logging in a user, below helper method turncates timeline and posts file of user
     void truncateFile(const std::string username) {
         // Open the file in truncate mode
-        std::string timeline_path = "./timeline_" + username + ".txt";
-        std::string posts_path = "./posts_" + username + ".txt";
+        std::string timeline_path = filePrefix(username) + "_timeline.txt";
+        std::string posts_path = filePrefix(username) + "./posts.txt";
+        std::string following_path = filePrefix(username) + "./following.txt";
+        std::string follower_path = filePrefix(username) + "./follower.txt";
         std::ofstream timeline(timeline_path, std::ios::trunc);
         std::ofstream post(posts_path, std::ios::trunc);
+        std::ofstream following(following_path, std::ios::trunc);
+        std::ofstream follower(follower_path, std::ios::trunc);
         if (!timeline) {
             log(ERROR, "Error opening file: " + timeline_path);
             return;
         }
-        // log(INFO, "Truncated file:\\t" + timeline_path);
         if (!post) {
             log(ERROR, "Error opening file: " + posts_path);
             return;
         }
-        // log(INFO, "Truncated file:\\t" + posts_path);
+        if (!following) {
+            log(ERROR, "Error opening file: " + following_path);
+            return;
+        }
+        if (!follower) {
+            log(ERROR, "Error opening file: " + follower_path);
+            return;
+        }
         timeline.close();
         post.close();
+        following.close();
+        follower.close();
     }
 
     // Helper method that uses the ServerReaderWriter stream of client, and Client, to get Timeline Posts, sort by timestamp and write them to client
     void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user) {
-        std::string timeline_path = "./timeline_" + user->username + ".txt";
-        std::vector<Post> posts = parseFileContent(timeline_path);
+        std::string timeline_path = filePrefix(user->username) + "_timeline.txt";
+        std::vector<Post> posts = parseFileContentForPosts(timeline_path);
         // boolean compare method to sort by larger timestamp
         auto compareByTimestamp = [](const Post &a, const Post &b) {
             return a.timestamp > b.timestamp;
@@ -413,7 +587,7 @@ class SNSServiceImpl final : public SNSService::Service {
     // Helper method to make Post for a user
     void makePost(Message new_post, Client *user) {
         // std::string content = new_post.msg();
-        std::string file_path = "./posts_" + user->username + ".txt";
+        std::string file_path = filePrefix(user->username) + "_posts.txt";
         // google::protobuf::Timestamp temptime = message.timestamp();
         // google::protobuf::Timestamp *ts_ptr = new google::protobuf::Timestamp();
         // ts_ptr->CopyFrom(temptime);  // Copy the contents of temptime
@@ -428,12 +602,12 @@ class SNSServiceImpl final : public SNSService::Service {
                 // Using follower's stream to Write the message to follower's Timeline
                 follower->stream->Write(new_post);
             }
-            std::string follower_timeline_path = "./timeline_" + follower->username + ".txt";
+            std::string follower_timeline_path = filePrefix(follower->username) + "_timeline.txt";
             log(INFO, "Add To File:\t\tMessage from User " + new_post.username() + " to User " + follower->username + "'s timeline file " + follower_timeline_path);
             // Write the message regardless to the follower's timeline file
             addToFile(follower_timeline_path, new_post);
         }
-        std::string posts_file_path = "./posts_" + user->username + ".txt";
+        std::string posts_file_path = filePrefix(user->username) + "_posts.txt";
         log(INFO, "Add to File:\t\tMessage from User " + user->username + " to User " + user->username + "'s posts file " + posts_file_path);
         addToFile(posts_file_path, new_post);
     }
@@ -462,59 +636,81 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 };
 
-void heartbeat(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
+void createFolder(const std::string& path) {
+    std::filesystem::path dirPath(path);
+
+    // Check if the directory already exists
+    if (std::filesystem::exists(dirPath)) {
+        std::cout << "Folder already exists: " << path << std::endl;
+    } else {
+        // Create the folder
+        if (std::filesystem::create_directory(dirPath)) {
+            std::cout << "Folder created: " << path << std::endl;
+        } else {
+            std::cerr << "Error creating folder: " << path << std::endl;
+        }
+    }
+}
+
+void heartbeat(csce662::ServerInfo serverInfo, std::string coordinator_ip, std::string coordinator_port) {
     try {
         bool isRegisterHeartBeat = true;
 
-        // Indicate the start of the loop
-        std::cout << "Entering heartbeat loop..." << std::endl << std::flush;
+        std::cout << "Entering heartbeat loop..." << std::endl
+                  << std::flush;
 
         while (true) {
             std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
-            std::cout << "Making a stub for coordinator at: " << coordinator_address << std::endl << std::flush;
+            std::cout << "Making a stub for coordinator at: " << coordinator_address << std::endl
+                      << std::flush;
 
             // Make the stub to call the coordinator
             std::unique_ptr<CoordService::Stub> stub = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
 
             // Check if stub is created successfully
             if (!stub) {
-                std::cerr << "Failed to create stub for coordinator at: " << coordinator_address << std::endl << std::flush;
+                std::cerr << "Failed to create stub for coordinator at: " << coordinator_address << std::endl
+                          << std::flush;
                 return;
             }
 
             // Create the request
-            ServerInfo serverInfo;
-            std::cout << "Creating ServerInfo object..." << std::endl << std::flush;
-            serverInfo.set_clusterid(std::stoi(cluster_id));
-            serverInfo.set_serverid(std::stoi(server_id));
-            serverInfo.set_hostname("localhost");
-            serverInfo.set_port(server_port);
-            serverInfo.set_type("master");
+            // ServerInfo serverInfo;
+            std::cout << "Creating ServerInfo object..." << std::endl
+                      << std::flush;
+
 
             // Call the Register method
             grpc::ClientContext context;
             Confirmation reply;
-            std::cout << "Making Heartbeat call..." << std::endl << std::flush;
+            std::cout << "Making Heartbeat call..." << std::endl
+                      << std::flush;
             Status status = stub->Heartbeat(&context, serverInfo, &reply);
-            std::cout << "Made a call to Heartbeat." << std::endl << std::flush;  // Log after the call
+            std::cout << "Made a call to Heartbeat." << std::endl
+                      << std::flush;  // Log after the call
 
             if (status.ok()) {
                 if (isRegisterHeartBeat) {
-                    std::cout << "Server registered successfully with coordinator." << std::endl << std::flush;
+                    std::cout << "Server registered successfully with coordinator." << std::endl
+                              << std::flush;
                     isRegisterHeartBeat = false;
+                    std::string serverFolder = "./server_" + std::to_string(serverInfo.clusterid()) + "_" + std::to_string(serverInfo.serverid());
+                    createFolder(serverFolder);
                 } else {
-                    std::cout << "Received a success from coordinator" << std::endl << std::flush;
+                    std::cout << "Received a success from coordinator" << std::endl
+                              << std::flush;
                 }
             } else {
-                std::cerr << "Failed to register with coordinator: " << status.error_message() << std::endl << std::flush;
+                std::cerr << "Failed to register with coordinator: " << status.error_message() << std::endl
+                          << std::flush;
             }
             std::this_thread::sleep_for(std::chrono::seconds(5));  // Sleep before next heartbeat
         }
     } catch (const std::exception &e) {
-        std::cerr << "Exception caught in heartbeat: " << e.what() << std::endl << std::flush;
+        std::cerr << "Exception caught in heartbeat: " << e.what() << std::endl
+                  << std::flush;
     }
 }
-
 
 void RunServer(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
     std::string server_address = "0.0.0.0:" + server_port;
@@ -524,11 +720,15 @@ void RunServer(std::string server_id, std::string server_port, std::string clust
     builder.RegisterService(&service);
     std::unique_ptr<Server> server(builder.BuildAndStart());
     std::cout << "Server listening on " << server_address << std::endl;
-    std::thread heartbeat_thread(heartbeat, server_id, server_port, cluster_id, coordinator_ip, coordinator_port);
+    serverInfo.set_clusterid(std::stoi(cluster_id));
+    serverInfo.set_serverid(std::stoi(server_id));
+    serverInfo.set_hostname("localhost");
+    serverInfo.set_port(server_port);
+    serverInfo.set_type("master");
+    std::thread heartbeat_thread(heartbeat, serverInfo, coordinator_ip, coordinator_port);
     heartbeat_thread.detach();
     server->Wait();
 }
-
 
 int main(int argc, char **argv) {
     std::string port = "3010";
