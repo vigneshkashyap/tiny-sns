@@ -3,6 +3,10 @@ tsd
 coordinator
 tsc.o
 tsd.o
+client.o
+sns.pb.o
+sns.grpc.pb.o
 coordinator.o
 coordinator.grpc.pb.o
 coordinator.pb.o
+.DS_Store
