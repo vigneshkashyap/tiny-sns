@@ -41,12 +41,12 @@
 
 #include <algorithm>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
-#include <filesystem>
 
 // #include "json.hpp"
 #define log(severity, msg) \
@@ -109,7 +109,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
     std::string filePrefix(std::string username) {
         return "server_" + std::to_string(serverInfo.clusterid()) + "_" +
-                         std::to_string(serverInfo.serverid()) + "/" + username;
+               std::to_string(serverInfo.serverid()) + "/" + username;
     }
 
     Status List(ServerContext *context, const Request *request, ListReply *list_reply) override {
@@ -230,28 +230,43 @@ class SNSServiceImpl final : public SNSService::Service {
         std::string following_filename = filePrefix(username) + "_following.txt";
         std::string follower_filename = filePrefix(to_remove) + "_follower.txt";
 
-        // Helper lambda to check if an entry should be removed
-        auto shouldRemove = [&](const std::string &entry) {
-            return entry == to_remove;
+        // Helper function to remove a user from a file
+        auto removeEntryFromFile = [](const std::string &filename, const std::string &entry_to_remove) {
+            // Open the original file for reading
+            std::ifstream file_in(filename);
+            if (!file_in.is_open()) {
+                std::cerr << "Unable to open file: " << filename << std::endl;
+                return;
+            }
+
+            // Open a temporary file for writing the updated content
+            std::ofstream temp_out(filename + ".tmp");
+            if (!temp_out.is_open()) {
+                std::cerr << "Unable to open temp file for writing." << std::endl;
+                return;
+            }
+
+            std::string line;
+            while (std::getline(file_in, line)) {
+                if (line != entry_to_remove) {
+                    // Write only lines that don't match the entry to be removed
+                    temp_out << line << std::endl;
+                }
+            }
+
+            file_in.close();
+            temp_out.close();
+
+            // Replace the original file with the updated one
+            std::remove(filename.c_str());
+            std::rename((filename + ".tmp").c_str(), filename.c_str());
         };
 
-        auto writeEntry = [](std::ofstream &file_out, const std::string &entry) {
-            file_out << entry << std::endl;
-        };
+        // Remove 'to_remove' from the following file of the user
+        removeEntryFromFile(following_filename, to_remove);
 
-        auto parseEntry = [](const std::string &line) {
-            return line;  // Each line is simply a username in this case
-        };
-
-        // Remove from the following file of the user
-        removeEntries<std::string>(following_filename, shouldRemove, writeEntry, parseEntry);
-
-        // Now remove the user from the follower file of the to_remove user
-        auto shouldRemoveFollower = [&](const std::string &entry) {
-            return entry == username;  // Reverse: remove username from the follower file of to_remove
-        };
-
-        removeEntries<std::string>(follower_filename, shouldRemoveFollower, writeEntry, parseEntry);
+        // Remove 'username' from the follower file of 'to_remove'
+        removeEntryFromFile(follower_filename, username);
     }
 
     // RPC Login
@@ -316,80 +331,6 @@ class SNSServiceImpl final : public SNSService::Service {
         return decoded_content;
     }
 
-    // Helper Method to parse the file, and return a vector of posts, that contain the post details
-    // std::vector<Post> parseFileContent(const std::string &file_path) {
-    //     std::ifstream file(file_path);
-    //     std::vector<Post> posts;
-    //     if (!file) {
-    //         log(ERROR, "Error opening file:\t\t" + file_path);
-    //         return posts;
-    //     }
-    //     if (file.peek() == std::ifstream::traits_type::eof()) {
-    //         log(ERROR, "File is empty:\t\t" + file_path);
-    //         return posts;
-    //     }
-    //     std::string line;
-    //     while (std::getline(file, line)) {
-    //         // Invoke the split helper method to get a vector of strings
-    //         auto tokens = split(line, DELIMITER);
-    //         if (tokens.size() == 3) {
-    //             Post post;
-    //             post.username = tokens[0];
-    //             //
-    //             post.content = decodeNewLineChar(tokens[1]);
-    //             try {
-    //                 // Timestamp in Post struct is long long, hence we convert from string to long long
-    //                 post.timestamp = std::stoll(tokens[2]);
-    //             } catch (const std::exception &e) {
-    //                 log(ERROR, "Error converting timestamp:\t\t" + std::string(e.what()));
-    //                 continue;
-    //             }
-    //             posts.push_back(post);
-    //         } else {
-    //             log(ERROR, "Invalid data format in file:\t\t" + file_path);
-    //         }
-    //     }
-    //     file.close();
-    //     return posts;
-    // }
-    std::vector<Post> parseFileContentForPosts(const std::string &file_path) {
-        auto parseEntry = [this](const std::string &line) {  // Capture this
-            return parsePost(line);  // Call the non-static method
-        };
-        return parseFileContent<Post>(file_path, parseEntry);
-    }
-
-    template <typename T>
-    std::vector<T> parseFileContent(const std::string &file_path,
-                                    std::function<T(const std::string &)> parseEntry) {
-        std::ifstream file(file_path);
-        std::vector<T> entries;
-
-        if (!file) {
-            log(ERROR, "Error opening file:\t\t" + file_path);
-            return entries;
-        }
-
-        if (file.peek() == std::ifstream::traits_type::eof()) {
-            log(ERROR, "File is empty:\t\t" + file_path);
-            return entries;
-        }
-
-        std::string line;
-        while (std::getline(file, line)) {
-            try {
-                T entry = parseEntry(line);  // Use the generic parseEntry function
-                entries.push_back(entry);
-            } catch (const std::exception &e) {
-                log(ERROR, "Error parsing line:\t\t" + std::string(e.what()));
-                continue;  // Skip invalid entries
-            }
-        }
-
-        file.close();
-        return entries;
-    }
-
     // Helper Method, to add a new Message file
     void addToFile(std::string file_path, Message message) {
         // Create a Post object
@@ -403,127 +344,171 @@ class SNSServiceImpl final : public SNSService::Service {
             log(ERROR, "Error opening file:\t\t" + file_path);
             return;
         }
-        // Add the Post content using the defined DELIMITER
-        file << post.username << DELIMITER
-             << encodeNewLineChar(post.content) << DELIMITER
-             << post.timestamp << std::endl;
+        writePostToFile(file, post);
         file.close();
     }
 
+    std::string createDateTimeFromTimestamp(long long timestamp) {
+        std::time_t time = static_cast<std::time_t>(timestamp);  // Assuming timestamp is in seconds
+        std::tm *tm_time = std::localtime(&time);
+
+        // Format as YYYY-MM-DD HH:MM:SS
+        char buffer[20];
+        std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm_time);
+        return std::string(buffer);
+    }
+
     // Method invoked when unfollowing is successful, from user's timeline, the to_unfollow_user's posts are removed
-    // void removePostsFromTimeline(const std::string username, const std::string unfollowed_user) {
-    //     std::string timeline_path = "./timeline_" + username + ".txt";
-    //     std::vector<Post> posts = parseFileContent(timeline_path);
-    //     std::vector<Post> new_posts;
-    //     for (const auto &post : posts) {
-    //         // Filter the posts that are not the unfollowed_user's
-    //         if (post.username != unfollowed_user) {
-    //             new_posts.push_back(post);
-    //         }
-    //     }
-    //     // Open the timeline file and non-append mode, thereby truncating the data
-    //     std::ofstream Timeline(timeline_path);
-    //     if (!Timeline.is_open()) {
-    //         std::cerr << "Error opening file for writing." << std::endl;
-    //         return;
-    //     }
-    //     log(INFO, "Remove Posts:\t\tUser " + unfollowed_user + "'s posts removed from User " + username + "'s timeline");
-    //     // Iterate over all posts and write all posts
-    //     for (const auto &post : new_posts) {
-    //         Timeline << post.username << DELIMITER
-    //                  << encodeNewLineChar(post.content) << DELIMITER
-    //                  << post.timestamp << std::endl;
-    //     }
-    //     Timeline.close();
-    // }
 
-    Post parsePost(const std::string &line) {
-        Post post;
-        auto tokens = split(line, DELIMITER);  // Assuming DELIMITER is '|', or another character
+    // Reads posts from the file and returns them as a vector
+    std::vector<Post> parseFileContentForPosts(const std::string &file_path) {
+        std::ifstream file_in(file_path);
+        std::vector<Post> posts;
+        std::string line;
 
-        if (tokens.size() == 3) {
-            post.username = tokens[0];
-            post.content = decodeNewLineChar(tokens[1]);
+        while (true) {
+            std::vector<std::string> lines;
 
-            try {
-                // Converting string to long long for timestamp
-                post.timestamp = std::stoll(tokens[2]);
-            } catch (const std::exception &e) {
-                log(ERROR, "Error converting timestamp: " + std::string(e.what()));
-                throw;  // Optionally, rethrow or handle accordingly
+            // Read lines until a blank line (or termination condition) is found
+            while (std::getline(file_in, line)) {
+                if (line.empty()) {
+                    break;  // End of current post
+                }
+                lines.push_back(line);
             }
-        } else {
-            log(ERROR, "Invalid data format in line: " + line);
-            throw std::runtime_error("Invalid format");  // You could handle the error as needed
+
+            // If no lines were read, we have reached the end of the file
+            if (lines.empty()) {
+                break;
+            }
+
+            // Parse the collected lines into a Post object
+            Post post = parsePost(lines);
+            posts.push_back(post);
         }
 
+        file_in.close();
+        return posts;
+    }
+
+    // Parses a Post object from a vector of strings
+    Post parsePost(const std::vector<std::string> &lines) {
+        Post post;
+
+        // Ensure lines follow a specific order:
+        if (lines.size() < 3) {
+            log(ERROR, "Insufficient data to form a Post.");
+            throw std::runtime_error("Insufficient data to form a Post.");
+        }
+
+        // Parse each line based on its expected format
+        post.timestamp = parseTimestampLine(lines[0]);
+        post.username = parseUsernameLine(lines[1]);
+        post.content = parseContentLine(lines[2]);
+
         return post;
+    }
+
+    // Removes posts from the timeline based on the unfollowed user
+    void writePostToFile(std::ofstream &file, const Post &post) {
+        file << "T " << createDateTimeFromTimestamp(post.timestamp) << std::endl;  // Convert timestamp to desired format
+        file << "U " << post.username << std::endl;
+        file << "W " << encodeNewLineChar(post.content) << std::endl;
+        file << std::endl;  // Empty line to separate posts
     }
 
     void removePostsFromTimeline(const std::string &username, const std::string &unfollowed_user) {
         std::string timeline_path = filePrefix(username) + "_timeline.txt";
 
-        // Define the conditions and how to handle each post
-        auto shouldRemove = [&](const Post &post) {
-            return post.username == unfollowed_user;
-        };
-
-        auto writeEntry = [this](std::ofstream &file_out, const Post &post) {
-            file_out << post.username << DELIMITER
-                     << encodeNewLineChar(post.content) << DELIMITER
-                     << post.timestamp << std::endl;
-        };
-
-        auto parseEntry = [this](const std::string &line) {
-            return parsePost(line);  // Assuming you have a parsePost function to convert a line into a Post object
-        };
-
-        removeEntries<Post>(timeline_path, shouldRemove, writeEntry, parseEntry);
-    }
-
-    template <typename T>
-    void removeEntries(const std::string &filepath, const std::function<bool(const T &)> &shouldRemove, const std::function<void(std::ofstream &, const T &)> &writeEntry, const std::function<T(const std::string &)> &parseEntry) {
-        std::ifstream file_in(filepath);
-
+        // Open the timeline file for reading
+        std::ifstream file_in(timeline_path);
         if (!file_in.is_open()) {
-            std::cerr << "Unable to open file: " << filepath << std::endl;
+            std::cerr << "Unable to open timeline file: " << timeline_path << std::endl;
             return;
         }
 
-        std::vector<T> entries;
-        std::string line;
+        // Open a temporary file for writing the updated timeline
+        std::ofstream temp_out(timeline_path + ".tmp");
+        if (!temp_out.is_open()) {
+            std::cerr << "Unable to open temp file for writing." << std::endl;
+            return;
+        }
 
-        // Read all lines and parse them into entries
+        std::string line;
+        Post current_post;
+
+        // Reading the file 3 lines at a time (assuming the file is structured in blocks of 3 lines per post)
         while (std::getline(file_in, line)) {
-            T entry = parseEntry(line);
-            // Filter out entries that match the removal condition
-            if (!shouldRemove(entry)) {
-                entries.push_back(entry);
+            if (line.rfind("T ", 0) == 0) {
+                // Parse the timestamp line
+                current_post.timestamp = parseTimestampLine(line);
+            }
+
+            std::getline(file_in, line);  // Username line
+            current_post.username = parseUsernameLine(line);
+
+            std::getline(file_in, line);                    // Content line
+            current_post.content = parseContentLine(line);  // Assuming the prefix "W "
+
+            std::getline(file_in, line);  // This should be the empty line between posts
+
+            // If the current post's username is not the unfollowed user's, keep it
+            if (current_post.username != unfollowed_user) {
+                writePostToFile(temp_out, current_post);
             }
         }
+
         file_in.close();
+        temp_out.close();
 
-        // Rewrite the file with the filtered entries
-        std::ofstream file_out(filepath, std::ios::trunc);
-        if (!file_out.is_open()) {
-            std::cerr << "Unable to open file for writing: " << filepath << std::endl;
-            return;
+        // Replace the original file with the updated one
+        std::remove(timeline_path.c_str());
+        std::rename((timeline_path + ".tmp").c_str(), timeline_path.c_str());
+    }
+    // Helper functions to parse individual components from lines
+    long long parseTimestampLine(const std::string &line) {
+        // Extract the date-time string (assuming it starts at index 2, skipping 'T ')
+        std::string datetime_str = line.substr(2);
+
+        // Create a tm struct to store the parsed date and time
+        std::tm tm = {};
+        std::istringstream ss(datetime_str);
+
+        // Parse the string into the tm struct (format: YYYY-MM-DD HH:MM:SS)
+        ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+        if (ss.fail()) {
+            std::cerr << "Failed to parse the timestamp: " << datetime_str << std::endl;
+            return -1;
         }
 
-        for (const auto &entry : entries) {
-            writeEntry(file_out, entry);
+        // Convert to time_t (which is equivalent to Unix timestamp)
+        std::time_t time_since_epoch = std::mktime(&tm);
+
+        // Check if mktime failed
+        if (time_since_epoch == -1) {
+            std::cerr << "Failed to convert time to timestamp." << std::endl;
+            return -1;
         }
 
-        file_out.close();
+        return static_cast<long long>(time_since_epoch);
+    }
+
+    std::string parseUsernameLine(const std::string &line) {
+        return line.substr(2);  // Assuming 'U ' prefix
+    }
+
+    std::string parseContentLine(const std::string &line) {
+        return decodeNewLineChar(line.substr(2));  // Assuming 'W ' prefix
     }
 
     // When logging in a user, below helper method turncates timeline and posts file of user
     void truncateFile(const std::string username) {
         // Open the file in truncate mode
         std::string timeline_path = filePrefix(username) + "_timeline.txt";
-        std::string posts_path = filePrefix(username) + "./posts.txt";
-        std::string following_path = filePrefix(username) + "./following.txt";
-        std::string follower_path = filePrefix(username) + "./follower.txt";
+        std::string posts_path = filePrefix(username) + "_posts.txt";
+        std::string following_path = filePrefix(username) + "_following.txt";
+        std::string follower_path = filePrefix(username) + "_follower.txt";
         std::ofstream timeline(timeline_path, std::ios::trunc);
         std::ofstream post(posts_path, std::ios::trunc);
         std::ofstream following(following_path, std::ios::trunc);
@@ -570,14 +555,6 @@ class SNSServiceImpl final : public SNSService::Service {
             msg.set_allocated_timestamp(createProtoTimestampFromEpoch(post.timestamp));
             msg.set_username(post.username);
             msg.set_msg(post.content);
-
-            // Optional Output defined in 1.8 of MP1
-
-            // output_stream << "T " << msg.timestamp << std::endl;
-            // output_stream << "U " << msg.username << std::endl;
-            // output_stream << "W " << msg.content << std::endl;
-            // output_stream << std::endl;
-
             // Use client's stream to write the timeline post
             stream->Write(msg);
         }
@@ -636,7 +613,7 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 };
 
-void createFolder(const std::string& path) {
+void createFolder(const std::string &path) {
     std::filesystem::path dirPath(path);
 
     // Check if the directory already exists
@@ -678,7 +655,6 @@ void heartbeat(csce662::ServerInfo serverInfo, std::string coordinator_ip, std::
             // ServerInfo serverInfo;
             std::cout << "Creating ServerInfo object..." << std::endl
                       << std::flush;
-
 
             // Call the Register method
             grpc::ClientContext context;
