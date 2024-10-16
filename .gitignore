@@ -1,5 +1,8 @@
-*.txt
-*.json
-client-1.cc
-sns-1.proto
-tsc-1.cc
+tsc
+tsd
+coordinator
+tsc.o
+tsd.o
+coordinator.o
+coordinator.grpc.pb.o
+coordinator.pb.o
