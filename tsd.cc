@@ -45,22 +45,25 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 
 // #include "json.hpp"
 #define log(severity, msg) \
     LOG(severity) << msg;  \
     google::FlushLogFiles(google::severity);
 
+#include "coordinator.grpc.pb.h"
 #include "sns.grpc.pb.h"
 
 #define DELIMITER "\x1F"
 
-// using json = nlohmann::json;
-
+using csce662::Confirmation;
+using csce662::CoordService;
 using csce662::ListReply;
 using csce662::Message;
 using csce662::Reply;
 using csce662::Request;
+using csce662::ServerInfo;
 using csce662::SNSService;
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
@@ -209,14 +212,12 @@ class SNSServiceImpl final : public SNSService::Service {
     // RPC Login
     Status Login(ServerContext *context, const Request *request, Reply *reply) override {
         // We go over the client_db to check if username already exists, and accordingly return a grpc::Status::ALREADY_EXISTS
-        for (Client *client : client_db) {
-            if (client->username == request->username()) {
+        Client *user_index = find_user(request->username());
+        if (user_index == NULL) {
                 reply->set_msg("Username already exists");
                 log(ERROR, "Login Failed:\t\tUsername " + request->username() + " already exists");
                 reply->set_msg("1");
                 return Status(grpc::StatusCode::ALREADY_EXISTS, "Username already exists");
-                ;
-            }
         }
         Client *client = new Client();
         client->username = request->username();
@@ -406,7 +407,7 @@ class SNSServiceImpl final : public SNSService::Service {
             // Use client's stream to write the timeline post
             stream->Write(msg);
         }
-        log(INFO, "Display Timeline Successful:\t\tUser " + user->username + " has " + std::to_string(posts_size) + " posts");
+        log(INFO, "GetTimeline Successful:\tUser " + user->username + " has " + std::to_string(posts_size) + " posts");
     }
 
     // Helper method to make Post for a user
@@ -423,17 +424,17 @@ class SNSServiceImpl final : public SNSService::Service {
         for (Client *follower : user->client_followers) {
             // Send it to all followers
             if (follower->stream) {
-                log(INFO, "Streaming:\t\t" + new_post.msg() + " from User " + new_post.username() + " to User " + follower->username);
+                log(INFO, "Streaming:\t\tMessage from User " + new_post.username() + " to User " + follower->username);
                 // Using follower's stream to Write the message to follower's Timeline
                 follower->stream->Write(new_post);
             }
             std::string follower_timeline_path = "./timeline_" + follower->username + ".txt";
-            log(INFO, "Add To File:\t\t" + new_post.msg() + " from User " + new_post.username() + " to timeline file " + follower_timeline_path);
+            log(INFO, "Add To File:\t\tMessage from User " + new_post.username() + " to User " + follower->username + "'s timeline file " + follower_timeline_path);
             // Write the message regardless to the follower's timeline file
             addToFile(follower_timeline_path, new_post);
         }
         std::string posts_file_path = "./posts_" + user->username + ".txt";
-        log(INFO, "Add to File:\t\t" + new_post.msg() + " from User " + new_post.username() + " to posts file " + posts_file_path);
+        log(INFO, "Add to File:\t\tMessage from User " + user->username + " to User " + user->username + "'s posts file " + posts_file_path);
         addToFile(posts_file_path, new_post);
     }
 
@@ -461,26 +462,95 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 };
 
-void RunServer(std::string port_no) {
-    std::string server_address = "0.0.0.0:" + port_no;
-    SNSServiceImpl service;
+void heartbeat(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
+    try {
+        bool isRegisterHeartBeat = true;
 
+        // Indicate the start of the loop
+        std::cout << "Entering heartbeat loop..." << std::endl << std::flush;
+
+        while (true) {
+            std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
+            std::cout << "Making a stub for coordinator at: " << coordinator_address << std::endl << std::flush;
+
+            // Make the stub to call the coordinator
+            std::unique_ptr<CoordService::Stub> stub = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
+
+            // Check if stub is created successfully
+            if (!stub) {
+                std::cerr << "Failed to create stub for coordinator at: " << coordinator_address << std::endl << std::flush;
+                return;
+            }
+
+            // Create the request
+            ServerInfo serverInfo;
+            std::cout << "Creating ServerInfo object..." << std::endl << std::flush;
+            serverInfo.set_clusterid(std::stoi(cluster_id));
+            serverInfo.set_serverid(std::stoi(server_id));
+            serverInfo.set_hostname("localhost");
+            serverInfo.set_port(server_port);
+            serverInfo.set_type("master");
+
+            // Call the Register method
+            grpc::ClientContext context;
+            Confirmation reply;
+            std::cout << "Making Heartbeat call..." << std::endl << std::flush;
+            Status status = stub->Heartbeat(&context, serverInfo, &reply);
+            std::cout << "Made a call to Heartbeat." << std::endl << std::flush;  // Log after the call
+
+            if (status.ok()) {
+                if (isRegisterHeartBeat) {
+                    std::cout << "Server registered successfully with coordinator." << std::endl << std::flush;
+                    isRegisterHeartBeat = false;
+                } else {
+                    std::cout << "Received a success from coordinator" << std::endl << std::flush;
+                }
+            } else {
+                std::cerr << "Failed to register with coordinator: " << status.error_message() << std::endl << std::flush;
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(5));  // Sleep before next heartbeat
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Exception caught in heartbeat: " << e.what() << std::endl << std::flush;
+    }
+}
+
+
+void RunServer(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
+    std::string server_address = "0.0.0.0:" + server_port;
+    SNSServiceImpl service;
     ServerBuilder builder;
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
     std::unique_ptr<Server> server(builder.BuildAndStart());
     std::cout << "Server listening on " << server_address << std::endl;
-    log(INFO, "Server listening on " + server_address);
-
+    std::thread heartbeat_thread(heartbeat, server_id, server_port, cluster_id, coordinator_ip, coordinator_port);
+    heartbeat_thread.detach();
     server->Wait();
 }
 
+
 int main(int argc, char **argv) {
     std::string port = "3010";
-
+    std::string server_id = "1";
+    std::string cluster_id = "1";
+    std::string coordinator_ip = "localhost";
+    std::string coordinator_port = "9090";
     int opt = 0;
-    while ((opt = getopt(argc, argv, "p:")) != -1) {
+    while ((opt = getopt(argc, argv, "c:s:h:k:p:")) != -1) {
         switch (opt) {
+            case 'c':
+                cluster_id = optarg;
+                break;
+            case 's':
+                server_id = optarg;
+                break;
+            case 'h':
+                coordinator_ip = optarg;
+                break;
+            case 'k':
+                coordinator_port = optarg;
+                break;
             case 'p':
                 port = optarg;
                 break;
@@ -492,7 +562,7 @@ int main(int argc, char **argv) {
     std::string log_file_name = std::string("server-") + port;
     google::InitGoogleLogging(log_file_name.c_str());
     log(INFO, "Logging Initialized. Server starting...");
-    RunServer(port);
-
+    RunServer(server_id, port, cluster_id, coordinator_ip, coordinator_port);
+    // RunServer(port);
     return 0;
 }

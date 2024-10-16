@@ -11,11 +11,16 @@
 
 #include "client.h"
 #include "sns.grpc.pb.h"
+#include "coordinator.grpc.pb.h"
 using csce662::ListReply;
 using csce662::Message;
 using csce662::Reply;
 using csce662::Request;
 using csce662::SNSService;
+using csce662::ID;
+using csce662::ServerInfo;
+using csce662::CoordService;
+
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::ClientReader;
@@ -43,7 +48,7 @@ class Client : public IClient {
     Client(const std::string& hname,
            const std::string& uname,
            const std::string& p)
-        : hostname(hname), username(uname), port(p) {}
+        : coordinator_hostname(hname), coordinator_port(p), username(uname) {}
 
    protected:
     virtual int connectTo();
@@ -51,13 +56,16 @@ class Client : public IClient {
     virtual void processTimeline();
 
    private:
-    std::string hostname;
+    std::string coordinator_hostname;
+    std::string coordinator_port;
     std::string username;
+    std::string hostname;
     std::string port;
 
     // You can have an instance of the client stub
     // as a member variable.
     std::unique_ptr<SNSService::Stub> stub_;
+    std::unique_ptr<CoordService::Stub> stub_coordinator;
 
     IReply Login();
     IReply List();
@@ -70,8 +78,32 @@ class Client : public IClient {
 //
 //////////////////////////////////////////////////////////
 int Client::connectTo() {
-    std::shared_ptr<::grpc::ChannelInterface> channel = grpc::CreateChannel("localhost:" + port, grpc::InsecureChannelCredentials());
-    stub_ = SNSService::NewStub(channel);
+    std::shared_ptr<::grpc::ChannelInterface> channel = grpc::CreateChannel(coordinator_hostname + ":" + coordinator_port, grpc::InsecureChannelCredentials());
+    stub_coordinator = CoordService::NewStub(channel);
+    // Make a connection with coordinator and get the
+    ServerInfo serverInfo;
+    ClientContext context;
+    // Request request;
+    // request.set_username(username);
+    ID id;
+    id.set_id(std::stoi(username));
+    grpc::Status status = stub_coordinator->GetServer(&context, id, &serverInfo);
+    // ire.grpc_status = status;
+    // grpc::StatusCode status_code = status.error_code();
+    std::cout<<"Created Coordinator Stub";
+    if (!status.ok()) {
+        // grpc::StatusCode status_code = status.error_code();
+        // if (status_code == grpc::StatusCode::ALREADY_EXISTS) {
+        //     ire.comm_status = FAILURE_INVALID_USERNAME;
+        // } else {
+        //     ire.comm_status = FAILURE_INVALID;
+        // }
+        std::cout<<"We got some error";
+    }
+    hostname = serverInfo.hostname();
+    port = serverInfo.port();
+    // std::shared_ptr<::grpc::ChannelInterface> channel = grpc::CreateChannel(serverInfo + port, grpc::InsecureChannelCredentials());
+    stub_ = SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
     IReply ire = Login();
     if (!ire.grpc_status.ok()) {
       return -1;
@@ -94,9 +126,9 @@ IReply Client::processCommand(std::string& input) {
     } else if (command.compare("LIST") == 0) {
         ire = List();
     } else if (command.compare("TIMELINE") == 0) {
-        Timeline(username);
+        ire.grpc_status = Status::OK;
+        ire.comm_status = SUCCESS;
     }
-
     return ire;
 }
 
@@ -206,13 +238,9 @@ void Client::Timeline(const std::string& username) {
     std::thread reader_thread([stream, username]() {
         Message incomingMessage;
         while (stream->Read(&incomingMessage)) {
-            // if (incomingMessage.username().compare("$$TIMELINE$$") == 0) {
-            //   std::cout<<incomingMessage.
-            // } else {
             google::protobuf::Timestamp timestamp = incomingMessage.timestamp();
             std::time_t time = timestamp.seconds();
-            displayPostMessage(incomingMessage.username(), incomingMessage.msg(), time);  // Show the retrieved message
-                                                                                          // }
+            displayPostMessage(incomingMessage.username(), incomingMessage.msg(), time);
         }
     });
     writer_thread.join();
@@ -226,9 +254,10 @@ int main(int argc, char** argv) {
     std::string hostname = "localhost";
     std::string username = "default";
     std::string port = "3010";
+    std::string coordinator_port = "9090";
 
     int opt = 0;
-    while ((opt = getopt(argc, argv, "h:u:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "h:u:p:k:")) != -1) {
         switch (opt) {
             case 'h':
                 hostname = optarg;
@@ -239,6 +268,9 @@ int main(int argc, char** argv) {
             case 'p':
                 port = optarg;
                 break;
+            case 'k':
+                coordinator_port = optarg;
+                break;
             default:
                 std::cout << "Invalid Command Line Argument\n";
         }
@@ -246,7 +278,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Logging Initialized. Client starting...";
 
-    Client myc(hostname, username, port);
+    Client myc(hostname, username, coordinator_port);
 
     myc.run();
 
