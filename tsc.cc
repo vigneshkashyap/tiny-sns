@@ -83,26 +83,19 @@ int Client::connectTo() {
     // Make a connection with coordinator and get the
     ServerInfo serverInfo;
     ClientContext context;
-    // Request request;
-    // request.set_username(username);
     ID id;
     id.set_id(std::stoi(username));
     grpc::Status status = stub_coordinator->GetServer(&context, id, &serverInfo);
-    // ire.grpc_status = status;
-    // grpc::StatusCode status_code = status.error_code();
-    std::cout<<"Created Coordinator Stub";
     if (!status.ok()) {
         // grpc::StatusCode status_code = status.error_code();
         // if (status_code == grpc::StatusCode::ALREADY_EXISTS) {
         //     ire.comm_status = FAILURE_INVALID_USERNAME;
         // } else {
         //     ire.comm_status = FAILURE_INVALID;
-        // }
-        std::cout<<"We got some error";
+        return -1;
     }
     hostname = serverInfo.hostname();
     port = serverInfo.port();
-    // std::shared_ptr<::grpc::ChannelInterface> channel = grpc::CreateChannel(serverInfo + port, grpc::InsecureChannelCredentials());
     stub_ = SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
     IReply ire = Login();
     if (!ire.grpc_status.ok()) {

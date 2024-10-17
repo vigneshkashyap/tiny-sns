@@ -86,18 +86,15 @@ bool zNode::isActive(){
 class CoordServiceImpl final : public CoordService::Service {
 
     Status Heartbeat(ServerContext* context, const ServerInfo* serverinfo, Confirmation* confirmation) override {
-        // Your code here
-        //   v_mutex.lock();
     std::lock_guard<std::mutex> lock(v_mutex);
-    std::cout << "We got the hearbeat\t" << std::endl << std::flush;
     int serverID = serverinfo->serverid();
-    int clusterID = serverinfo->clusterid();
+    int clusterID = serverinfo->clusterid() - 1;
     int index = findServer(clusters[clusterID], serverID);
-    std::cout << "Server Index:\t" << index << std::endl << std::flush;
+    log(INFO, "Server Index:\t" + index );
     if (index != -1) {
         clusters[clusterID][index]->last_heartbeat = getTimeNow();
         clusters[clusterID][index]->missed_heartbeat = false;
-        std::cout << "Updated heartbeat for existing server ID: " << serverID << std::endl << std::flush;
+        log(INFO, "Hearbeat Received!\tServer ID:\t" + std::to_string(serverID));
     } else {
         zNode* newServer = new zNode();
         newServer->serverID = serverID; // Assuming ServerInfo has an id() method
@@ -106,7 +103,7 @@ class CoordServiceImpl final : public CoordService::Service {
         newServer->last_heartbeat = getTimeNow();
         newServer->missed_heartbeat = false;
         clusters[clusterID].push_back(newServer); // Adjust as needed
-        std::cout << "Added new server with ID: " << serverID << " to cluster ID: " << clusterID << std::endl << std::flush;
+        log(INFO,"Server Added!\t Server ID:\t" + std::to_string(serverID) + " to cluster ID:\t" + std::to_string(clusterID) );
     }
 
     // Add newServer to a cluster (for simplicity, adding to cluster1)
@@ -120,15 +117,21 @@ class CoordServiceImpl final : public CoordService::Service {
     //hardcoded to represent this.
     Status GetServer(ServerContext* context, const ID* id, ServerInfo* serverinfo) override {
         std::lock_guard<std::mutex> lock(v_mutex);
-        std::cout << "We got a client connect request\t" << std::endl << std::flush;
+        log(INFO, "GetServer Request by Client ID:\t" + std::to_string(id->id()));
         int clientID = id->id();
-        int clusterID = ((clientID - 1) % 3) + 1;
+        int clusterID = ((clientID - 1) % 3);
         int serverID = 1;
+        std::cout<<"We are trying to find the index"<<std::endl;
         int index = findServer(clusters[clusterID], serverID);
+        std::cout<<"Received index as:\t"<<index<<std::endl;
         serverinfo->set_hostname(clusters[clusterID][index]->hostname);
         serverinfo->set_port(clusters[clusterID][index]->port);
         // Your code here
         return Status::OK;
+    }
+
+    Status create(ServerContext* context, const PathAndData* PathAndData, Status* status) override {
+        
     }
 
 
@@ -170,6 +173,8 @@ int main(int argc, char** argv) {
                 std::cerr << "Invalid Command Line Argument\n";
         }
     }
+    std::string log_file_name = std::string("coordinator-port-") + port;
+    google::InitGoogleLogging(log_file_name.c_str());
     RunServer(port);
     return 0;
 }
@@ -206,7 +211,7 @@ void checkHeartbeat(){
                         continue;  // Skip if the server pointer is null
                     }
                 if(difftime(getTimeNow(),s->last_heartbeat)>10){
-                    std::cout << "missed heartbeat from server " << s->serverID << std::endl;
+                    log(WARNING, "Missed Heartbeat from server\t" + std::to_string(s->serverID));
                     if(!s->missed_heartbeat){
                         s->missed_heartbeat = true;
                         s->last_heartbeat = getTimeNow();

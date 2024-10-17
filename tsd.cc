@@ -53,6 +53,7 @@
     LOG(severity) << msg;  \
     google::FlushLogFiles(google::severity);
 
+
 #include "coordinator.grpc.pb.h"
 #include "sns.grpc.pb.h"
 
@@ -618,13 +619,13 @@ void createFolder(const std::string &path) {
 
     // Check if the directory already exists
     if (std::filesystem::exists(dirPath)) {
-        std::cout << "Folder already exists: " << path << std::endl;
+        log(WARNING, "Folder already exists:\t" + path);
     } else {
         // Create the folder
         if (std::filesystem::create_directory(dirPath)) {
-            std::cout << "Folder created: " << path << std::endl;
+            log(INFO, "Folder created:\t" + path);
         } else {
-            std::cerr << "Error creating folder: " << path << std::endl;
+            log(ERROR, "Error creating folder:\t" + path);
         }
     }
 }
@@ -632,53 +633,30 @@ void createFolder(const std::string &path) {
 void heartbeat(csce662::ServerInfo serverInfo, std::string coordinator_ip, std::string coordinator_port) {
     try {
         bool isRegisterHeartBeat = true;
-
-        std::cout << "Entering heartbeat loop..." << std::endl
-                  << std::flush;
-
+        log(INFO, "Entering heartbeat loop...");
         while (true) {
             std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
-            std::cout << "Making a stub for coordinator at: " << coordinator_address << std::endl
-                      << std::flush;
-
             // Make the stub to call the coordinator
             std::unique_ptr<CoordService::Stub> stub = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
-
             // Check if stub is created successfully
             if (!stub) {
-                std::cerr << "Failed to create stub for coordinator at: " << coordinator_address << std::endl
-                          << std::flush;
                 return;
             }
-
-            // Create the request
-            // ServerInfo serverInfo;
-            std::cout << "Creating ServerInfo object..." << std::endl
-                      << std::flush;
-
             // Call the Register method
             grpc::ClientContext context;
             Confirmation reply;
-            std::cout << "Making Heartbeat call..." << std::endl
-                      << std::flush;
             Status status = stub->Heartbeat(&context, serverInfo, &reply);
-            std::cout << "Made a call to Heartbeat." << std::endl
-                      << std::flush;  // Log after the call
-
             if (status.ok()) {
                 if (isRegisterHeartBeat) {
-                    std::cout << "Server registered successfully with coordinator." << std::endl
-                              << std::flush;
+                    log(INFO, "Server registered successfully with coordinator.");
                     isRegisterHeartBeat = false;
                     std::string serverFolder = "./server_" + std::to_string(serverInfo.clusterid()) + "_" + std::to_string(serverInfo.serverid());
                     createFolder(serverFolder);
                 } else {
-                    std::cout << "Received a success from coordinator" << std::endl
-                              << std::flush;
+                    log(INFO, "Heartbeat acknowledged");
                 }
             } else {
-                std::cerr << "Failed to register with coordinator: " << status.error_message() << std::endl
-                          << std::flush;
+                log(ERROR, "Failed to register with coordinator: " + status.error_message());
             }
             std::this_thread::sleep_for(std::chrono::seconds(5));  // Sleep before next heartbeat
         }
@@ -735,7 +713,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::string log_file_name = std::string("server-") + port;
+    // std::string log_file_name = std::string("server-") + port;
+    std::string log_file_name = std::string("cluster-") + cluster_id + std::string("-server-") + server_id + "-port-" + port;
     google::InitGoogleLogging(log_file_name.c_str());
     log(INFO, "Logging Initialized. Server starting...");
     RunServer(server_id, port, cluster_id, coordinator_ip, coordinator_port);
