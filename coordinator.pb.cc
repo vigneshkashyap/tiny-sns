@@ -36,8 +36,6 @@ PROTOBUF_CONSTEXPR ServerInfo::ServerInfo(
 
   , /*decltype(_impl_.serverid_)*/ 0
 
-  , /*decltype(_impl_.clusterid_)*/ 0
-
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct ServerInfoDefaultTypeInternal {
   PROTOBUF_CONSTEXPR ServerInfoDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
@@ -190,7 +188,6 @@ const ::uint32_t TableStruct_coordinator_2eproto::offsets[] PROTOBUF_SECTION_VAR
     PROTOBUF_FIELD_OFFSET(::csce662::ServerInfo, _impl_.hostname_),
     PROTOBUF_FIELD_OFFSET(::csce662::ServerInfo, _impl_.port_),
     PROTOBUF_FIELD_OFFSET(::csce662::ServerInfo, _impl_.type_),
-    PROTOBUF_FIELD_OFFSET(::csce662::ServerInfo, _impl_.clusterid_),
     ~0u,  // no _has_bits_
     PROTOBUF_FIELD_OFFSET(::csce662::Confirmation, _internal_metadata_),
     ~0u,  // no _extensions_
@@ -260,13 +257,13 @@ const ::uint32_t TableStruct_coordinator_2eproto::offsets[] PROTOBUF_SECTION_VAR
 static const ::_pbi::MigrationSchema
     schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
         { 0, -1, -1, sizeof(::csce662::ServerInfo)},
-        { 13, -1, -1, sizeof(::csce662::Confirmation)},
-        { 22, -1, -1, sizeof(::csce662::ID)},
-        { 31, -1, -1, sizeof(::csce662::ServerList)},
-        { 40, -1, -1, sizeof(::csce662::SynchService)},
-        { 49, -1, -1, sizeof(::csce662::PathAndData)},
-        { 59, -1, -1, sizeof(::csce662::Path)},
-        { 68, -1, -1, sizeof(::csce662::Status)},
+        { 12, -1, -1, sizeof(::csce662::Confirmation)},
+        { 21, -1, -1, sizeof(::csce662::ID)},
+        { 30, -1, -1, sizeof(::csce662::ServerList)},
+        { 39, -1, -1, sizeof(::csce662::SynchService)},
+        { 48, -1, -1, sizeof(::csce662::PathAndData)},
+        { 58, -1, -1, sizeof(::csce662::Path)},
+        { 67, -1, -1, sizeof(::csce662::Status)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -281,20 +278,20 @@ static const ::_pb::Message* const file_default_instances[] = {
 };
 const char descriptor_table_protodef_coordinator_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
     "\n\021coordinator.proto\022\007csce662\032\037google/pro"
-    "tobuf/timestamp.proto\"_\n\nServerInfo\022\020\n\010s"
+    "tobuf/timestamp.proto\"L\n\nServerInfo\022\020\n\010s"
     "erverID\030\001 \001(\005\022\020\n\010hostname\030\002 \001(\t\022\014\n\004port\030"
-    "\003 \001(\t\022\014\n\004type\030\004 \001(\t\022\021\n\tclusterID\030\005 \001(\005\"\036"
-    "\n\014Confirmation\022\016\n\006status\030\001 \001(\010\"\020\n\002ID\022\n\n\002"
-    "id\030\001 \001(\005\" \n\nServerList\022\022\n\nserverList\030\001 \003"
-    "(\t\"\034\n\014SynchService\022\014\n\004test\030\001 \001(\t\")\n\013Path"
-    "AndData\022\014\n\004path\030\001 \001(\t\022\014\n\004data\030\002 \001(\t\"\024\n\004P"
-    "ath\022\014\n\004path\030\001 \001(\t\"\030\n\006Status\022\016\n\006status\030\001 "
-    "\001(\0102\331\001\n\014CoordService\0229\n\tHeartbeat\022\023.csce"
-    "662.ServerInfo\032\025.csce662.Confirmation\"\000\022"
-    "/\n\tGetServer\022\013.csce662.ID\032\023.csce662.Serv"
-    "erInfo\"\000\0221\n\006create\022\024.csce662.PathAndData"
-    "\032\017.csce662.Status\"\000\022*\n\006exists\022\r.csce662."
-    "Path\032\017.csce662.Status\"\000b\006proto3"
+    "\003 \001(\t\022\014\n\004type\030\004 \001(\t\"\036\n\014Confirmation\022\016\n\006s"
+    "tatus\030\001 \001(\010\"\020\n\002ID\022\n\n\002id\030\001 \001(\005\" \n\nServerL"
+    "ist\022\022\n\nserverList\030\001 \003(\t\"\034\n\014SynchService\022"
+    "\014\n\004test\030\001 \001(\t\")\n\013PathAndData\022\014\n\004path\030\001 \001"
+    "(\t\022\014\n\004data\030\002 \001(\t\"\024\n\004Path\022\014\n\004path\030\001 \001(\t\"\030"
+    "\n\006Status\022\016\n\006status\030\001 \001(\0102\331\001\n\014CoordServic"
+    "e\0229\n\tHeartbeat\022\023.csce662.ServerInfo\032\025.cs"
+    "ce662.Confirmation\"\000\022/\n\tGetServer\022\013.csce"
+    "662.ID\032\023.csce662.ServerInfo\"\000\0221\n\006create\022"
+    "\024.csce662.PathAndData\032\017.csce662.Status\"\000"
+    "\022*\n\006exists\022\r.csce662.Path\032\017.csce662.Stat"
+    "us\"\000b\006proto3"
 };
 static const ::_pbi::DescriptorTable* const descriptor_table_coordinator_2eproto_deps[1] =
     {
@@ -304,7 +301,7 @@ static ::absl::once_flag descriptor_table_coordinator_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_coordinator_2eproto = {
     false,
     false,
-    591,
+    572,
     descriptor_table_protodef_coordinator_2eproto,
     "coordinator.proto",
     &descriptor_table_coordinator_2eproto_once,
@@ -360,8 +357,6 @@ ServerInfo::ServerInfo(const ServerInfo& from)
 
     , decltype(_impl_.serverid_) {}
 
-    , decltype(_impl_.clusterid_) {}
-
     , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -386,9 +381,7 @@ ServerInfo::ServerInfo(const ServerInfo& from)
   if (!from._internal_type().empty()) {
     _this->_impl_.type_.Set(from._internal_type(), _this->GetArenaForAllocation());
   }
-  ::memcpy(&_impl_.serverid_, &from._impl_.serverid_,
-    static_cast<::size_t>(reinterpret_cast<char*>(&_impl_.clusterid_) -
-    reinterpret_cast<char*>(&_impl_.serverid_)) + sizeof(_impl_.clusterid_));
+  _this->_impl_.serverid_ = from._impl_.serverid_;
   // @@protoc_insertion_point(copy_constructor:csce662.ServerInfo)
 }
 
@@ -402,8 +395,6 @@ inline void ServerInfo::SharedCtor(::_pb::Arena* arena) {
     , decltype(_impl_.type_) {}
 
     , decltype(_impl_.serverid_) { 0 }
-
-    , decltype(_impl_.clusterid_) { 0 }
 
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -450,9 +441,7 @@ void ServerInfo::Clear() {
   _impl_.hostname_.ClearToEmpty();
   _impl_.port_.ClearToEmpty();
   _impl_.type_.ClearToEmpty();
-  ::memset(&_impl_.serverid_, 0, static_cast<::size_t>(
-      reinterpret_cast<char*>(&_impl_.clusterid_) -
-      reinterpret_cast<char*>(&_impl_.serverid_)) + sizeof(_impl_.clusterid_));
+  _impl_.serverid_ = 0;
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -500,15 +489,6 @@ const char* ServerInfo::_InternalParse(const char* ptr, ::_pbi::ParseContext* ct
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "csce662.ServerInfo.type"));
-        } else {
-          goto handle_unusual;
-        }
-        continue;
-      // int32 clusterID = 5;
-      case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::uint8_t>(tag) == 40)) {
-          _impl_.clusterid_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
-          CHK_(ptr);
         } else {
           goto handle_unusual;
         }
@@ -573,13 +553,6 @@ failure:
     target = stream->WriteStringMaybeAliased(4, _s, target);
   }
 
-  // int32 clusterID = 5;
-  if (this->_internal_clusterid() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteInt32ToArray(
-        5, this->_internal_clusterid(), target);
-  }
-
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -620,12 +593,6 @@ failure:
         this->_internal_serverid());
   }
 
-  // int32 clusterID = 5;
-  if (this->_internal_clusterid() != 0) {
-    total_size += ::_pbi::WireFormatLite::Int32SizePlusOne(
-        this->_internal_clusterid());
-  }
-
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -656,9 +623,6 @@ void ServerInfo::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PRO
   if (from._internal_serverid() != 0) {
     _this->_internal_set_serverid(from._internal_serverid());
   }
-  if (from._internal_clusterid() != 0) {
-    _this->_internal_set_clusterid(from._internal_clusterid());
-  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -684,12 +648,8 @@ void ServerInfo::InternalSwap(ServerInfo* other) {
                                        &other->_impl_.port_, rhs_arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.type_, lhs_arena,
                                        &other->_impl_.type_, rhs_arena);
-  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(ServerInfo, _impl_.clusterid_)
-      + sizeof(ServerInfo::_impl_.clusterid_)
-      - PROTOBUF_FIELD_OFFSET(ServerInfo, _impl_.serverid_)>(
-          reinterpret_cast<char*>(&_impl_.serverid_),
-          reinterpret_cast<char*>(&other->_impl_.serverid_));
+
+  swap(_impl_.serverid_, other->_impl_.serverid_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata ServerInfo::GetMetadata() const {

@@ -235,7 +235,6 @@ class ServerInfo final :
     kPortFieldNumber = 3,
     kTypeFieldNumber = 4,
     kServerIDFieldNumber = 1,
-    kClusterIDFieldNumber = 5,
   };
   // string hostname = 2;
   void clear_hostname() ;
@@ -307,16 +306,6 @@ class ServerInfo final :
   void _internal_set_serverid(::int32_t value);
 
   public:
-  // int32 clusterID = 5;
-  void clear_clusterid() ;
-  ::int32_t clusterid() const;
-  void set_clusterid(::int32_t value);
-
-  private:
-  ::int32_t _internal_clusterid() const;
-  void _internal_set_clusterid(::int32_t value);
-
-  public:
   // @@protoc_insertion_point(class_scope:csce662.ServerInfo)
  private:
   class _Internal;
@@ -329,7 +318,6 @@ class ServerInfo final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr port_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     ::int32_t serverid_;
-    ::int32_t clusterid_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1668,26 +1656,6 @@ inline void ServerInfo::set_allocated_type(std::string* value) {
         }
   #endif  // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:csce662.ServerInfo.type)
-}
-
-// int32 clusterID = 5;
-inline void ServerInfo::clear_clusterid() {
-  _impl_.clusterid_ = 0;
-}
-inline ::int32_t ServerInfo::clusterid() const {
-  // @@protoc_insertion_point(field_get:csce662.ServerInfo.clusterID)
-  return _internal_clusterid();
-}
-inline void ServerInfo::set_clusterid(::int32_t value) {
-  _internal_set_clusterid(value);
-  // @@protoc_insertion_point(field_set:csce662.ServerInfo.clusterID)
-}
-inline ::int32_t ServerInfo::_internal_clusterid() const {
-  return _impl_.clusterid_;
-}
-inline void ServerInfo::_internal_set_clusterid(::int32_t value) {
-  ;
-  _impl_.clusterid_ = value;
 }
 
 // -------------------------------------------------------------------

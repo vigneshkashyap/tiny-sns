@@ -40,6 +40,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -53,19 +54,20 @@
     LOG(severity) << msg;  \
     google::FlushLogFiles(google::severity);
 
-
 #include "coordinator.grpc.pb.h"
 #include "sns.grpc.pb.h"
 
-#define DELIMITER "\x1F"
+// #define DELIMITER "\x1F"
 
 using csce662::Confirmation;
 using csce662::CoordService;
 using csce662::ListReply;
 using csce662::Message;
+using csce662::PathAndData;
 using csce662::Reply;
 using csce662::Request;
 using csce662::ServerInfo;
+// using csce662::Status;
 using csce662::SNSService;
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
@@ -96,7 +98,219 @@ struct Post {
 
 // Vector that stores every client that has been created
 std::vector<Client *> client_db;
-ServerInfo serverInfo;
+
+class CoordinationService {
+   private:
+    ServerInfo serverInfo;
+    PathAndData pathAndData;
+    std::string cluster_id;
+    std::string server_id;
+    const char DELIMITER = '|';
+    std::unique_ptr<CoordService::Stub> stub_;
+    std::string coordinator_ip;
+    std::string coordinator_port;
+
+   public:
+    // Default constructor
+    CoordinationService() {
+        // Initialize members with default values or leave empty
+    }
+    CoordinationService(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
+        this->cluster_id = cluster_id;
+        this->server_id = server_id;
+        serverInfo.set_serverid(std::stoi(server_id));
+        serverInfo.set_hostname("localhost");
+        serverInfo.set_port(server_port + DELIMITER + cluster_id);  // Due to lack of cluster_id in proto
+        serverInfo.set_type("master");
+        this->coordinator_ip = coordinator_ip;
+        this->coordinator_port = coordinator_port;
+        // Set Path and Data object
+        pathAndData.set_path(std::string("localhost") + DELIMITER + server_port);  // Put hostname and port as path with delimiter
+        pathAndData.set_data(cluster_id + DELIMITER + server_id);                  // We put cluster_id and server_id
+    }
+
+    std::string filePrefix(std::string username) {
+        return "server_" + cluster_id + "_" + server_id + "/" + username;
+    }
+
+    void createFolder(const std::string &path) {
+        std::filesystem::path dirPath(path);
+        // Check if the directory already exists
+        if (std::filesystem::exists(dirPath)) {
+            log(WARNING, "Folder already exists:\t" + path);
+        } else {
+            // Create the folder
+            if (std::filesystem::create_directory(dirPath)) {
+                log(INFO, "Folder created:\t" + path);
+            } else {
+                log(ERROR, "Error creating folder:\t" + path);
+            }
+        }
+    }
+
+    void heartbeat() {
+        try {
+            log(INFO, "Entering heartbeat loop...");
+            while (true) {
+                std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
+                // Check if stub is created successfully
+                if (!stub_) {
+                    return;
+                }
+                // Call the Register method
+                grpc::ClientContext context;
+                Confirmation reply;
+                Status status = stub_->Heartbeat(&context, serverInfo, &reply);
+                if (status.ok()) {
+                    log(INFO, "Heartbeat acknowledged");
+                } else {
+                    log(ERROR, "Failed to register with coordinator: " + status.error_message());
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(5));  // Sleep before next heartbeat
+            }
+        } catch (const std::exception &e) {
+            std::cerr << "Exception caught in heartbeat: " << e.what() << std::endl
+                      << std::flush;
+        }
+    }
+
+    void loadClientDB(const std::string &file_path) {
+        std::ifstream file_in(file_path);
+        std::string line;
+        if (!file_in) {
+            std::cerr << "Failed to open the file for reading." << std::endl;
+            return;
+        }
+        while (std::getline(file_in, line)) {
+            if (line == "Client") {
+                Client *client = new Client;
+                // Read client fields
+                std::getline(file_in, client->username);
+                file_in >> client->connected;
+                file_in >> client->following_file_size;
+                file_in >> client->isInitialTimelineRequest;
+                int followers_count, following_count;
+                file_in >> followers_count;
+                file_in.ignore();  // Ignore the newline after followers_count
+                // Load followers (stored as usernames, must relink later)
+                for (int i = 0; i < followers_count; ++i) {
+                    std::string follower_username;
+                    std::getline(file_in, follower_username);
+                    Client *follower = new Client;
+                    follower->username = follower_username;
+                    client->client_followers.push_back(follower);
+                }
+
+                file_in >> following_count;
+                file_in.ignore();  // Ignore the newline after following_count
+                // Load following (stored as usernames, must relink later)
+                for (int i = 0; i < following_count; ++i) {
+                    std::string following_username;
+                    std::getline(file_in, following_username);
+                    Client *following = new Client;
+                    following->username = following_username;
+                    client->client_following.push_back(following);
+                }
+                client_db.push_back(client);
+            }
+        }
+        file_in.close();
+    }
+
+    void relinkClients() {
+        std::unordered_map<std::string, Client *> username_to_client;
+        // Create a mapping from usernames to Client* for easy lookup
+        for (auto *client : client_db) {
+            username_to_client[client->username] = client;
+        }
+        // Relink client followers and following
+        for (auto *client : client_db) {
+            for (auto *&follower : client->client_followers) {
+                follower = username_to_client[follower->username];  // Update to point to the actual client
+            }
+            for (auto *&following : client->client_following) {
+                following = username_to_client[following->username];  // Update to point to the actual client
+            }
+        }
+    }
+
+    void restoreDB() {
+        std::string file_path = "./server_" + cluster_id + "_" + server_id + "/client_db.txt";
+        // Load and relink client data when restarting the server
+        loadClientDB(file_path);
+        relinkClients();
+    }
+
+    bool registerWithCoordinator() {
+        std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
+        // Make the stub to call the coordinator
+        stub_ = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
+        // Check if stub is created successfully
+        if (!stub_) {
+            log(ERROR, "Unable to build CoordService stub");
+            return false;
+        }
+        grpc::ClientContext context;
+        // Call the Register method
+        csce662::Status response;
+        Status status = stub_->create(&context, pathAndData, &response);
+        if (!status.ok()) {
+            log(ERROR, "gRPC to co-ordinator failed");
+            return false;
+        }
+        if (response.status()) {
+            log(INFO, "Server registered successfully with coordinator.");
+            std::string serverFolder = "./server_" + cluster_id + "_" + server_id;
+            createFolder(serverFolder);
+            clearClientDB();
+        } else {
+            log(INFO, "Server reconnected successfully with coordinator.");
+            restoreDB();
+        }
+        return true;
+    }
+
+    void clearClientDB() {
+        std::string file_path = "./server_" + cluster_id + "_" + server_id + "/client_db.txt";
+        std::ofstream clientDB(file_path, std::ios::trunc);  // Open in truncate mode
+        if (clientDB.is_open()) {
+            clientDB.close();  // Close the file
+            log(INFO, "CLient DB file has been trunated");
+        } else {
+            log(WARNING, "CLient DB file does not exist");
+        }
+    }
+
+    void saveClientDB() {
+        std::string file_path = "./server_" + cluster_id + "_" + server_id + "/client_db.txt";
+        std::ofstream file_out(file_path);
+        if (!file_out) {
+            std::cerr << "Failed to open the file for writing." << std::endl;
+            return;
+        }
+        for (const auto *client : client_db) {
+            file_out << "Client\n";
+            file_out << client->username << "\n";
+            file_out << client->connected << "\n";
+            file_out << client->following_file_size << "\n";
+            file_out << client->isInitialTimelineRequest << "\n";
+            file_out << client->client_followers.size() << "\n";
+            // Serialize followers' usernames
+            for (const auto *follower : client->client_followers) {
+                file_out << follower->username << "\n";
+            }
+            file_out << client->client_following.size() << "\n";
+            // Serialize following users' usernames
+            for (const auto *following : client->client_following) {
+                file_out << following->username << "\n";
+            }
+        }
+        file_out.close();
+    }
+};
+// ServerInfo server_info;
+// std::string cluster_id;
+CoordinationService *coordinationService;
 
 class SNSServiceImpl final : public SNSService::Service {
     Client *getClient(std::string username) {
@@ -106,11 +320,6 @@ class SNSServiceImpl final : public SNSService::Service {
             }
         }
         return NULL;
-    }
-
-    std::string filePrefix(std::string username) {
-        return "server_" + std::to_string(serverInfo.clusterid()) + "_" +
-               std::to_string(serverInfo.serverid()) + "/" + username;
     }
 
     Status List(ServerContext *context, const Request *request, ListReply *list_reply) override {
@@ -162,12 +371,13 @@ class SNSServiceImpl final : public SNSService::Service {
         reply->set_msg("0");
         user->client_following.push_back(to_follow);
         to_follow->client_followers.push_back(user);
-        std::ofstream following(filePrefix(user->username) + "_following.txt", std::ios::app);
-        std::ofstream followers(filePrefix(to_follow->username) + "_follower.txt", std::ios::app);
+        std::ofstream following(coordinationService->filePrefix(user->username) + "_following.txt", std::ios::app);
+        std::ofstream followers(coordinationService->filePrefix(to_follow->username) + "_follower.txt", std::ios::app);
         following << to_follow->username << std::endl;
         followers << user->username << std::endl;
         following.close();
         followers.close();
+        coordinationService->saveClientDB();
         return Status::OK;
     }
 
@@ -218,9 +428,8 @@ class SNSServiceImpl final : public SNSService::Service {
         user->client_following.erase(user->client_following.begin() + following_index);
         // We need to remove the user from the to_unfollow_user's following vector using follower_index
         to_unfollow_user->client_followers.erase(to_unfollow_user->client_followers.begin() + follower_index);
-
         removeFromFollowLists(user->username, to_unfollow_user->username);
-
+        coordinationService->saveClientDB();
         log(INFO, "Unfollow Successful:\t\tUser " + curr_user + " unfollowed " + username);
         // We return the success code -> 0 SUCCESS
         reply->set_msg("0");
@@ -228,8 +437,8 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     void removeFromFollowLists(const std::string &username, const std::string &to_remove) {
-        std::string following_filename = filePrefix(username) + "_following.txt";
-        std::string follower_filename = filePrefix(to_remove) + "_follower.txt";
+        std::string following_filename = coordinationService->filePrefix(username) + "_following.txt";
+        std::string follower_filename = coordinationService->filePrefix(to_remove) + "_follower.txt";
 
         // Helper function to remove a user from a file
         auto removeEntryFromFile = [](const std::string &filename, const std::string &entry_to_remove) {
@@ -284,6 +493,7 @@ class SNSServiceImpl final : public SNSService::Service {
         client->username = request->username();
         client->connected = true;
         client_db.push_back(client);
+        coordinationService->saveClientDB();
         truncateFile(client->username);
         reply->set_msg("Login successful");
         log(INFO, "Login Successful:\t\tUser " + client->username);
@@ -419,7 +629,7 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     void removePostsFromTimeline(const std::string &username, const std::string &unfollowed_user) {
-        std::string timeline_path = filePrefix(username) + "_timeline.txt";
+        std::string timeline_path = coordinationService->filePrefix(username) + "_timeline.txt";
 
         // Open the timeline file for reading
         std::ifstream file_in(timeline_path);
@@ -506,10 +716,10 @@ class SNSServiceImpl final : public SNSService::Service {
     // When logging in a user, below helper method turncates timeline and posts file of user
     void truncateFile(const std::string username) {
         // Open the file in truncate mode
-        std::string timeline_path = filePrefix(username) + "_timeline.txt";
-        std::string posts_path = filePrefix(username) + "_posts.txt";
-        std::string following_path = filePrefix(username) + "_following.txt";
-        std::string follower_path = filePrefix(username) + "_follower.txt";
+        std::string timeline_path = coordinationService->filePrefix(username) + "_timeline.txt";
+        std::string posts_path = coordinationService->filePrefix(username) + "_posts.txt";
+        std::string following_path = coordinationService->filePrefix(username) + "_following.txt";
+        std::string follower_path = coordinationService->filePrefix(username) + "_follower.txt";
         std::ofstream timeline(timeline_path, std::ios::trunc);
         std::ofstream post(posts_path, std::ios::trunc);
         std::ofstream following(following_path, std::ios::trunc);
@@ -538,7 +748,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
     // Helper method that uses the ServerReaderWriter stream of client, and Client, to get Timeline Posts, sort by timestamp and write them to client
     void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user) {
-        std::string timeline_path = filePrefix(user->username) + "_timeline.txt";
+        std::string timeline_path = coordinationService->filePrefix(user->username) + "_timeline.txt";
         std::vector<Post> posts = parseFileContentForPosts(timeline_path);
         // boolean compare method to sort by larger timestamp
         auto compareByTimestamp = [](const Post &a, const Post &b) {
@@ -564,15 +774,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
     // Helper method to make Post for a user
     void makePost(Message new_post, Client *user) {
-        // std::string content = new_post.msg();
-        std::string file_path = filePrefix(user->username) + "_posts.txt";
-        // google::protobuf::Timestamp temptime = message.timestamp();
-        // google::protobuf::Timestamp *ts_ptr = new google::protobuf::Timestamp();
-        // ts_ptr->CopyFrom(temptime);  // Copy the contents of temptime
-        // Message new_post;
-        // new_post.set_allocated_timestamp(ts_ptr);
-        // new_post.set_msg(content);
-        // new_post.set_username(user->username);
+        std::string file_path = coordinationService->filePrefix(user->username) + "_posts.txt";
         for (Client *follower : user->client_followers) {
             // Send it to all followers
             if (follower->stream) {
@@ -580,12 +782,12 @@ class SNSServiceImpl final : public SNSService::Service {
                 // Using follower's stream to Write the message to follower's Timeline
                 follower->stream->Write(new_post);
             }
-            std::string follower_timeline_path = filePrefix(follower->username) + "_timeline.txt";
+            std::string follower_timeline_path = coordinationService->filePrefix(follower->username) + "_timeline.txt";
             log(INFO, "Add To File:\t\tMessage from User " + new_post.username() + " to User " + follower->username + "'s timeline file " + follower_timeline_path);
             // Write the message regardless to the follower's timeline file
             addToFile(follower_timeline_path, new_post);
         }
-        std::string posts_file_path = filePrefix(user->username) + "_posts.txt";
+        std::string posts_file_path = coordinationService->filePrefix(user->username) + "_posts.txt";
         log(INFO, "Add to File:\t\tMessage from User " + user->username + " to User " + user->username + "'s posts file " + posts_file_path);
         addToFile(posts_file_path, new_post);
     }
@@ -610,63 +812,12 @@ class SNSServiceImpl final : public SNSService::Service {
                 makePost(message, user);
             }
         }
+        user->connected = false;
         return Status::OK;
     }
 };
 
-void createFolder(const std::string &path) {
-    std::filesystem::path dirPath(path);
-
-    // Check if the directory already exists
-    if (std::filesystem::exists(dirPath)) {
-        log(WARNING, "Folder already exists:\t" + path);
-    } else {
-        // Create the folder
-        if (std::filesystem::create_directory(dirPath)) {
-            log(INFO, "Folder created:\t" + path);
-        } else {
-            log(ERROR, "Error creating folder:\t" + path);
-        }
-    }
-}
-
-void heartbeat(csce662::ServerInfo serverInfo, std::string coordinator_ip, std::string coordinator_port) {
-    try {
-        bool isRegisterHeartBeat = true;
-        log(INFO, "Entering heartbeat loop...");
-        while (true) {
-            std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
-            // Make the stub to call the coordinator
-            std::unique_ptr<CoordService::Stub> stub = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
-            // Check if stub is created successfully
-            if (!stub) {
-                return;
-            }
-            // Call the Register method
-            grpc::ClientContext context;
-            Confirmation reply;
-            Status status = stub->Heartbeat(&context, serverInfo, &reply);
-            if (status.ok()) {
-                if (isRegisterHeartBeat) {
-                    log(INFO, "Server registered successfully with coordinator.");
-                    isRegisterHeartBeat = false;
-                    std::string serverFolder = "./server_" + std::to_string(serverInfo.clusterid()) + "_" + std::to_string(serverInfo.serverid());
-                    createFolder(serverFolder);
-                } else {
-                    log(INFO, "Heartbeat acknowledged");
-                }
-            } else {
-                log(ERROR, "Failed to register with coordinator: " + status.error_message());
-            }
-            std::this_thread::sleep_for(std::chrono::seconds(5));  // Sleep before next heartbeat
-        }
-    } catch (const std::exception &e) {
-        std::cerr << "Exception caught in heartbeat: " << e.what() << std::endl
-                  << std::flush;
-    }
-}
-
-void RunServer(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
+int RunServer(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
     std::string server_address = "0.0.0.0:" + server_port;
     SNSServiceImpl service;
     ServerBuilder builder;
@@ -674,14 +825,17 @@ void RunServer(std::string server_id, std::string server_port, std::string clust
     builder.RegisterService(&service);
     std::unique_ptr<Server> server(builder.BuildAndStart());
     std::cout << "Server listening on " << server_address << std::endl;
-    serverInfo.set_clusterid(std::stoi(cluster_id));
-    serverInfo.set_serverid(std::stoi(server_id));
-    serverInfo.set_hostname("localhost");
-    serverInfo.set_port(server_port);
-    serverInfo.set_type("master");
-    std::thread heartbeat_thread(heartbeat, serverInfo, coordinator_ip, coordinator_port);
+    if (coordinationService != nullptr) {
+        delete coordinationService;  // Clean up if it already exists
+    }
+    coordinationService = new CoordinationService(server_id, server_port, cluster_id, coordinator_ip, coordinator_port);
+    if (!coordinationService->registerWithCoordinator()) {
+        return -1;
+    }
+    std::thread heartbeat_thread(&CoordinationService::heartbeat, coordinationService);
     heartbeat_thread.detach();
     server->Wait();
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -712,12 +866,9 @@ int main(int argc, char **argv) {
                 std::cerr << "Invalid Command Line Argument\n";
         }
     }
-
-    // std::string log_file_name = std::string("server-") + port;
     std::string log_file_name = std::string("cluster-") + cluster_id + std::string("-server-") + server_id + "-port-" + port;
     google::InitGoogleLogging(log_file_name.c_str());
     log(INFO, "Logging Initialized. Server starting...");
     RunServer(server_id, port, cluster_id, coordinator_ip, coordinator_port);
-    // RunServer(port);
     return 0;
 }

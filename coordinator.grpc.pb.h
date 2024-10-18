@@ -64,7 +64,7 @@ class CoordService final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce662::Status>> PrepareAsynccreate(::grpc::ClientContext* context, const ::csce662::PathAndData& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce662::Status>>(PrepareAsynccreateRaw(context, request, cq));
     }
-    // Check if a path exists (checking if a Master is elected
+    // Check if a path exists (checking if a Master is elected)
     virtual ::grpc::Status exists(::grpc::ClientContext* context, const ::csce662::Path& request, ::csce662::Status* response) = 0;
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce662::Status>> Asyncexists(::grpc::ClientContext* context, const ::csce662::Path& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce662::Status>>(AsyncexistsRaw(context, request, cq));
@@ -83,7 +83,7 @@ class CoordService final {
       // Create a path and place data in the znode
       virtual void create(::grpc::ClientContext* context, const ::csce662::PathAndData* request, ::csce662::Status* response, std::function<void(::grpc::Status)>) = 0;
       virtual void create(::grpc::ClientContext* context, const ::csce662::PathAndData* request, ::csce662::Status* response, ::grpc::ClientUnaryReactor* reactor) = 0;
-      // Check if a path exists (checking if a Master is elected
+      // Check if a path exists (checking if a Master is elected)
       virtual void exists(::grpc::ClientContext* context, const ::csce662::Path* request, ::csce662::Status* response, std::function<void(::grpc::Status)>) = 0;
       virtual void exists(::grpc::ClientContext* context, const ::csce662::Path* request, ::csce662::Status* response, ::grpc::ClientUnaryReactor* reactor) = 0;
     };
@@ -177,7 +177,7 @@ class CoordService final {
     // ZooKeeper API here
     // Create a path and place data in the znode
     virtual ::grpc::Status create(::grpc::ServerContext* context, const ::csce662::PathAndData* request, ::csce662::Status* response);
-    // Check if a path exists (checking if a Master is elected
+    // Check if a path exists (checking if a Master is elected)
     virtual ::grpc::Status exists(::grpc::ServerContext* context, const ::csce662::Path* request, ::csce662::Status* response);
   };
   template <class BaseClass>

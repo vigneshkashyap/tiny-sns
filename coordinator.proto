@@ -24,7 +24,6 @@ message ServerInfo{
     string hostname = 2;
     string port = 3;
     string type = 4;
-    int32 clusterID = 5;
 }
 // TODO: check which extra stuff in the coordinator.proto you dont need
 
