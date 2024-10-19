@@ -96,7 +96,6 @@ std::vector<std::string> split(const std::string& s, char delim = DELIMITER) {
 
 class CoordServiceImpl final : public CoordService::Service {
     Status Heartbeat(ServerContext* context, const ServerInfo* serverInfo, Confirmation* confirmation) override {
-        std::lock_guard<std::mutex> lock(v_mutex);
         std::vector<std::string> port = split(serverInfo->port());
         int serverID = serverInfo->serverid();
         int clusterID = std::stoi(port[1]) - 1;
@@ -108,8 +107,10 @@ class CoordServiceImpl final : public CoordService::Service {
             confirmation->set_status(false);  // Assuming Confirmation has a set_success() method
             return Status::OK;
         }
+        v_mutex.lock();
         clusters[clusterID][index]->last_heartbeat = getTimeNow();
         clusters[clusterID][index]->missed_heartbeat = false;
+        v_mutex.unlock();
         log(INFO, "Hearbeat Received!\tServer ID:\t" + std::to_string(serverID));
         // Add newServer to a cluster (for simplicity, adding to cluster1)
         confirmation->set_status(true);  // Assuming Confirmation has a set_success() method
@@ -120,36 +121,30 @@ class CoordServiceImpl final : public CoordService::Service {
     // this function assumes there are always 3 clusters and has math
     // hardcoded to represent this.
     Status GetServer(ServerContext* context, const ID* id, ServerInfo* serverinfo) override {
-        std::lock_guard<std::mutex> lock(v_mutex);
         log(INFO, "GetServer Request by Client ID:\t" + std::to_string(id->id()));
         int clientID = id->id();
         int clusterID = ((clientID - 1) % 3);
-        std::cout<< "Cluster ID:\t" << clusterID << std::endl;
         int serverID = 1;
         int index = findServer(clusters[clusterID], serverID);
-        std::cout<< "Index:\t" << index << std::endl;
         serverinfo->set_hostname(clusters[clusterID][index]->hostname);
         serverinfo->set_port(clusters[clusterID][index]->port);
-        // Your code here
         return Status::OK;
     }
 
     Status create(ServerContext* context, const PathAndData* pathAndData, csce662::Status* status) override {
-        std::lock_guard<std::mutex> lock(v_mutex);
         std::vector<std::string> path = split(pathAndData->path());
         std::vector<std::string> data = split(pathAndData->data());
         std::string hostname = path[0];
         std::string port = path[1];
         int clusterId = std::stoi(data[0]) - 1;
         int serverId = std::stoi(data[1]);
-        std::cout <<"Cluster ID:\t" << clusterId << "\tServer ID:\t" << serverId << std::endl;
         int index = findServer(clusters[clusterId], serverId);
-        std::cout <<"Index:\t" << index << std::endl;
         // If this serverId already exists in clusterId return grpc::NOT_POSSIBLE
         if (index != -1) {
             status->set_status(false);
             return Status::OK;
         }
+        v_mutex.lock();
         zNode* newServer = new zNode();
         newServer->serverID = serverId;  // Assuming ServerInfo has an id() method
         newServer->hostname = hostname;  // Assuming ServerInfo has a hostname() method
@@ -159,6 +154,7 @@ class CoordServiceImpl final : public CoordService::Service {
         clusters[clusterId].push_back(newServer);  // Adjust as needed
         log(INFO, "Server Added!\t Server ID:\t" + std::to_string(serverId) + " to cluster ID:\t" + std::to_string(clusterId));
         status->set_status(true);
+        v_mutex.unlock();
         return Status::OK;
     }
 
@@ -181,7 +177,11 @@ void RunServer(std::string port_no) {
     // Finally assemble the server.
     std::unique_ptr<Server> server(builder.BuildAndStart());
     std::cout << "Server listening on " << server_address << std::endl;
-
+    v_mutex.lock();
+    cluster1.clear();
+    cluster2.clear();
+    cluster3.clear();
+    v_mutex.unlock();
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     server->Wait();
@@ -206,8 +206,10 @@ int main(int argc, char** argv) {
 }
 
 int findServer(std::vector<zNode*> v, int id) {
-    //    v_mutex.lock();
-    return v.size() > 0? 0 : -1;
+    v_mutex.lock();
+    int result = v.size() > 0? 0 : -1;
+    v_mutex.unlock();
+    return result;
     // // iterating through the clusters vector of vectors of znodes
     // for (int i = 0; i < v.size(); i++) {
     //     if (v[i]->serverID == id) {
