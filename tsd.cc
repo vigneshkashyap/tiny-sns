@@ -36,6 +36,7 @@
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
 #include <grpc++/grpc++.h>
+#include "sns.grpc.pb.h"
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -63,11 +64,11 @@ using csce662::Confirmation;
 using csce662::CoordService;
 using csce662::ListReply;
 using csce662::Message;
-using csce662::PathAndData;
 using csce662::Reply;
 using csce662::Request;
+using csce662::ID;
+using csce662::Request;
 using csce662::ServerInfo;
-// using csce662::Status;
 using csce662::SNSService;
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
@@ -78,6 +79,7 @@ using grpc::ServerReader;
 using grpc::ServerReaderWriter;
 using grpc::ServerWriter;
 using grpc::Status;
+using grpc::ClientContext;
 
 struct Client {
     std::string username;
@@ -102,13 +104,12 @@ std::vector<Client *> client_db;
 class CoordinationService {
    private:
     ServerInfo serverInfo;
-    PathAndData pathAndData;
-    std::string cluster_id;
-    std::string server_id;
-    const char DELIMITER = '|';
     std::unique_ptr<CoordService::Stub> stub_;
     std::string coordinator_ip;
     std::string coordinator_port;
+    bool firstHeartbeat;
+    ServerInfo *slaveServer;
+    std::unique_ptr<SNSService::Stub> slaveStub;
 
    public:
     // Default constructor
@@ -116,21 +117,26 @@ class CoordinationService {
         // Initialize members with default values or leave empty
     }
     CoordinationService(std::string server_id, std::string server_port, std::string cluster_id, std::string coordinator_ip, std::string coordinator_port) {
-        this->cluster_id = cluster_id;
-        this->server_id = server_id;
         serverInfo.set_serverid(std::stoi(server_id));
+        serverInfo.set_clusterid(std::stoi(cluster_id));
         serverInfo.set_hostname("localhost");
-        serverInfo.set_port(server_port + DELIMITER + cluster_id);  // Due to lack of cluster_id in proto
-        serverInfo.set_type("master");
+        serverInfo.set_port(server_port);
+        serverInfo.set_type("server");
+        serverInfo.set_ismaster(true);
         this->coordinator_ip = coordinator_ip;
         this->coordinator_port = coordinator_port;
-        // Set Path and Data object
-        pathAndData.set_path(std::string("localhost") + DELIMITER + server_port);  // Put hostname and port as path with delimiter
-        pathAndData.set_data(cluster_id + DELIMITER + server_id);                  // We put cluster_id and server_id
+        firstHeartbeat = true;
+    }
+        // Add these getter functions
+    const ServerInfo& getServerInfo() const {
+        return serverInfo;
     }
 
+    SNSService::Stub* getSlaveStub() const {
+        return slaveStub.get();
+    }
     std::string filePrefix(std::string username) {
-        return "server_" + cluster_id + "_" + server_id + "/" + username;
+        return "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid())+ "/" + username;
     }
 
     void createFolder(const std::string &path) {
@@ -140,10 +146,32 @@ class CoordinationService {
             log(WARNING, "Folder already exists:\t" + path);
         } else {
             // Create the folder
-            if (std::filesystem::create_directory(dirPath)) {
+            if (std::filesystem::create_directories(dirPath)) {
                 log(INFO, "Folder created:\t" + path);
             } else {
                 log(ERROR, "Error creating folder:\t" + path);
+            }
+        }
+    }
+
+    void buildSlaveStub() {
+        grpc::ClientContext context;
+        csce662::ServerInfo* slaveServerInfo = new ServerInfo();
+        ID id;
+        id.set_id(serverInfo.clusterid());
+        Status status = stub_->GetSlave(&context, id, slaveServerInfo);
+        if (!status.ok()) {
+            if (status.error_code() == grpc::StatusCode::NOT_FOUND) {
+                log(ERROR, "No slave server found for cluster ID: " + std::to_string(serverInfo.clusterid()));
+            } else {
+                log(ERROR, "Failed to register with coordinator: " + status.error_message());
+                exit(-1);
+            }
+        } else {
+            log(INFO, "Stub creating with Hostname:\t" + slaveServerInfo->hostname() + "\tPort:\t" + slaveServerInfo->port());
+            slaveStub = SNSService::NewStub(grpc::CreateChannel(slaveServerInfo->hostname() + ":" + slaveServerInfo->port(), grpc::InsecureChannelCredentials()));
+            if (!slaveStub) {
+                log(ERROR, "Slave Stub not created");
             }
         }
     }
@@ -153,24 +181,47 @@ class CoordinationService {
             log(INFO, "Entering heartbeat loop...");
             while (true) {
                 std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
+                stub_ = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
                 // Check if stub is created successfully
                 if (!stub_) {
+                    log(ERROR, "Unable to build CoordService stub");
                     return;
                 }
                 // Call the Register method
                 grpc::ClientContext context;
-                Confirmation reply;
-                Status status = stub_->Heartbeat(&context, serverInfo, &reply);
-                if (status.ok()) {
-                    log(INFO, "Heartbeat acknowledged");
-                } else {
+                csce662::Confirmation confirmation;
+                Status status = stub_->Heartbeat(&context, serverInfo, &confirmation);
+                if (!status.ok()) {
+                    // log(ERROR, "gRPC to co-ordinator failed");
                     log(ERROR, "Failed to register with coordinator: " + status.error_message());
+                    exit(-1);
                 }
-                std::this_thread::sleep_for(std::chrono::seconds(5));  // Sleep before next heartbeat
+                if (!confirmation.status()) {
+                    serverInfo.set_ismaster(!serverInfo.ismaster());
+                    if (serverInfo.ismaster()) {
+                        buildSlaveStub();
+                    }
+                }
+                if (serverInfo.ismaster() && !slaveStub) {
+                    buildSlaveStub();
+                }
+                serverInfo.set_type(serverInfo.ismaster()? "master" : "slave");
+                if (firstHeartbeat) {
+                    log(INFO, "Server registered successfully with coordinator.");
+                    std::string serverFolder = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid());
+                    createFolder(serverFolder);
+                    clearClientDB();
+                    firstHeartbeat = false;
+                    if (serverInfo.ismaster()) {
+                        buildSlaveStub();
+                    }
+                } else {
+                    log(INFO, "Heartbeat acknowledged");
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(10));  // Sleep before next heartbeat
             }
         } catch (const std::exception &e) {
-            std::cerr << "Exception caught in heartbeat: " << e.what() << std::endl
-                      << std::flush;
+            log(ERROR, "Exception in heartbeat" + std::string(e.what()));
         }
     }
 
@@ -235,44 +286,14 @@ class CoordinationService {
     }
 
     void restoreDB() {
-        std::string file_path = "./server_" + cluster_id + "_" + server_id + "/client_db.txt";
-        // Load and relink client data when restarting the server
+        std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
         loadClientDB(file_path);
         relinkClients();
     }
 
-    bool registerWithCoordinator() {
-        std::string coordinator_address = coordinator_ip + ":" + coordinator_port;
-        // Make the stub to call the coordinator
-        stub_ = CoordService::NewStub(grpc::CreateChannel(coordinator_address, grpc::InsecureChannelCredentials()));
-        // Check if stub is created successfully
-        if (!stub_) {
-            log(ERROR, "Unable to build CoordService stub");
-            return false;
-        }
-        grpc::ClientContext context;
-        // Call the Register method
-        csce662::Status response;
-        Status status = stub_->create(&context, pathAndData, &response);
-        if (!status.ok()) {
-            log(ERROR, "gRPC to co-ordinator failed");
-            return false;
-        }
-        if (response.status()) {
-            log(INFO, "Server registered successfully with coordinator.");
-            std::string serverFolder = "./server_" + cluster_id + "_" + server_id;
-            createFolder(serverFolder);
-            clearClientDB();
-        } else {
-            log(INFO, "Server reconnected successfully with coordinator.");
-            restoreDB();
-        }
-        return true;
-    }
-
     void clearClientDB() {
-        std::string file_path = "./server_" + cluster_id + "_" + server_id + "/client_db.txt";
-        std::ofstream clientDB(file_path, std::ios::trunc);  // Open in truncate mode
+        std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
+        std::ofstream clientDB(file_path, std::ios::trunc);
         if (clientDB.is_open()) {
             clientDB.close();  // Close the file
             log(INFO, "CLient DB file has been trunated");
@@ -282,7 +303,7 @@ class CoordinationService {
     }
 
     void saveClientDB() {
-        std::string file_path = "./server_" + cluster_id + "_" + server_id + "/client_db.txt";
+        std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
         std::ofstream file_out(file_path);
         if (!file_out) {
             std::cerr << "Failed to open the file for writing." << std::endl;
@@ -308,8 +329,7 @@ class CoordinationService {
         file_out.close();
     }
 };
-// ServerInfo server_info;
-// std::string cluster_id;
+
 CoordinationService *coordinationService;
 
 class SNSServiceImpl final : public SNSService::Service {
@@ -339,6 +359,14 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     Status Follow(ServerContext *context, const Request *request, Reply *reply) override {
+        if (coordinationService->getServerInfo().ismaster() && coordinationService->getSlaveStub() != nullptr) {
+            grpc::ClientContext slave_context;
+            Reply slave_reply;
+            grpc::Status status = coordinationService->getSlaveStub()->Follow(&slave_context, *request, &slave_reply);
+            if (!status.ok()) {
+                log(ERROR, "Follow Failed:\t\tError forwarding to slave server");
+            }
+        }
         // Username of the client invoking FOLLOW
         std::string curr_user = request->username();
         // Username of the user to follow
@@ -382,6 +410,14 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     Status UnFollow(ServerContext *context, const Request *request, Reply *reply) override {
+        if (coordinationService->getServerInfo().ismaster() && coordinationService->getSlaveStub() != nullptr) {
+            grpc::ClientContext slave_context;
+            Reply slave_reply;
+            grpc::Status status = coordinationService->getSlaveStub()->UnFollow(&slave_context, *request, &slave_reply);
+            if (!status.ok()) {
+                log(ERROR, "Follow Failed:\t\tError forwarding to slave server");
+            }
+        }
         // Username of the client invoking FOLLOW
         std::string curr_user = request->username();
         // Username of the user to follow
@@ -481,6 +517,14 @@ class SNSServiceImpl final : public SNSService::Service {
 
     // RPC Login
     Status Login(ServerContext *context, const Request *request, Reply *reply) override {
+        if (coordinationService->getServerInfo().ismaster() && coordinationService->getSlaveStub() != nullptr) {
+            grpc::ClientContext slave_context;
+            Reply slave_reply;
+            grpc::Status status = coordinationService->getSlaveStub()->Login(&slave_context, *request, &slave_reply);
+            if (!status.ok()) {
+                log(ERROR, "Follow Failed:\t\tError forwarding to slave server");
+            }
+        }
         // We go over the client_db to check if username already exists, and accordingly return a grpc::Status::ALREADY_EXISTS
         Client *user_index = getClient(request->username());
         if (user_index != NULL) {
@@ -829,9 +873,6 @@ int RunServer(std::string server_id, std::string server_port, std::string cluste
         delete coordinationService;  // Clean up if it already exists
     }
     coordinationService = new CoordinationService(server_id, server_port, cluster_id, coordinator_ip, coordinator_port);
-    if (!coordinationService->registerWithCoordinator()) {
-        return -1;
-    }
     std::thread heartbeat_thread(&CoordinationService::heartbeat, coordinationService);
     heartbeat_thread.detach();
     server->Wait();

@@ -36,8 +36,6 @@ using csce662::CoordService;
 using csce662::ID;
 using csce662::ServerInfo;
 using csce662::ServerList;
-using csce662::PathAndData;
-// using csce662::Status;
 using csce662::SynchService;
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
@@ -84,80 +82,91 @@ bool zNode::isActive() {
     return status;
 }
 
-std::vector<std::string> split(const std::string& s, char delim = DELIMITER) {
-    std::vector<std::string> result;
-    std::stringstream ss(s);
-    std::string item;
-    while (getline(ss, item, delim)) {
-        result.push_back(item);
-    }
-    return result;
-}
-
 class CoordServiceImpl final : public CoordService::Service {
     Status Heartbeat(ServerContext* context, const ServerInfo* serverInfo, Confirmation* confirmation) override {
-        std::vector<std::string> port = split(serverInfo->port());
-        int serverID = serverInfo->serverid();
-        int clusterID = std::stoi(port[1]) - 1;
-        int index = findServer(clusters[clusterID], serverID);
-        log(INFO, "Server Index:\t" + index);
-        if (index == -1) {
-            log(WARNING, "Hearbeat Received!\t Server ID:\t" + std::to_string(serverID) + " not found in Cluster:\t" + std::to_string(clusterID));
-            // Add newServer to a cluster (for simplicity, adding to cluster1)
-            confirmation->set_status(false);  // Assuming Confirmation has a set_success() method
-            return Status::OK;
-        }
+        int serverId = serverInfo->serverid();
+        int clusterid = serverInfo->clusterid();
         v_mutex.lock();
-        clusters[clusterID][index]->last_heartbeat = getTimeNow();
-        clusters[clusterID][index]->missed_heartbeat = false;
+        std::vector<zNode*> cluster = clusters[clusterid - 1];
+        zNode *server = new zNode();
+        server->serverID = serverId;
+        server->hostname = serverInfo->hostname();
+        server->port = serverInfo->port();
+        server->type = serverInfo->type();
+        server->last_heartbeat = getTimeNow();
+        server->missed_heartbeat = false;
+        if (cluster.size() == 0) {
+            server->type = "master";
+            confirmation->set_status(true);
+            clusters[clusterid - 1].push_back(server);
+            log(INFO, "Master added");
+        } else if (cluster.size() == 1 && clusters[clusterid - 1][0]->serverID != serverId) {
+            server->type = "slave";
+            confirmation->set_status(false);
+            clusters[clusterid - 1].push_back(server);
+            log(INFO, "Slave added");
+        } else {
+            zNode *currServer = clusters[clusterid - 1][serverId - 1];
+            // Heartbeat
+            if (server->type == std::string("master")) {
+                confirmation->set_status(true);
+                currServer->last_heartbeat = server->last_heartbeat;
+                currServer->missed_heartbeat = server->missed_heartbeat;
+                // We have received a heartbeat from master
+                // log(INFO, "Master Heartbeat:\t" + std::to_string(currServer->last_heartbeat));
+                // log(INFO, "Master heartbeat" + currServer->last_heartbeat);
+            } else {
+                // Slave has sent heartbeat
+                // Check if Master has missedHeartbeat, then this becomes the master, and that becomes slave
+                int masterServerID = serverId == 1? 1 : 0;
+                zNode* master = clusters[clusterid - 1][masterServerID];
+                currServer->last_heartbeat = server->last_heartbeat;
+                currServer->missed_heartbeat = server->missed_heartbeat;
+                confirmation->set_status(true);
+                if (master->missed_heartbeat) {
+                    master->type = "slave";
+                    currServer->type = "master";
+                    confirmation->set_status(false);
+                    log(INFO, "Slave becomes Master:\t");
+                }
+            }
+        }
         v_mutex.unlock();
-        log(INFO, "Hearbeat Received!\tServer ID:\t" + std::to_string(serverID));
-        // Add newServer to a cluster (for simplicity, adding to cluster1)
-        confirmation->set_status(true);  // Assuming Confirmation has a set_success() method
         return Status::OK;
     }
 
-    // function returns the server information for requested client id
-    // this function assumes there are always 3 clusters and has math
-    // hardcoded to represent this.
-    Status GetServer(ServerContext* context, const ID* id, ServerInfo* serverinfo) override {
+    Status GetSlave (ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
+        log(INFO, "Get Slave Request by Server ID:\t" + std::to_string(id->id()));
+        std::vector<zNode*> cluster = clusters[id->id() - 1];
+        int clusterId = id->id();
+        for (auto server: cluster) {
+            if (server->type == std::string("slave")) {
+                serverInfo->set_hostname(server->hostname);
+                serverInfo->set_port(server->port);
+                log(INFO, "Slave Hostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
+                return Status::OK;
+            }
+        }
+        return grpc::Status(grpc::StatusCode::NOT_FOUND, "Slave server not found");
+    }
+
+    Status GetServer(ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
         log(INFO, "GetServer Request by Client ID:\t" + std::to_string(id->id()));
         int clientID = id->id();
         int clusterID = ((clientID - 1) % 3);
-        int serverID = 1;
-        int index = findServer(clusters[clusterID], serverID);
-        serverinfo->set_hostname(clusters[clusterID][index]->hostname);
-        serverinfo->set_port(clusters[clusterID][index]->port);
-        return Status::OK;
-    }
-
-    Status create(ServerContext* context, const PathAndData* pathAndData, csce662::Status* status) override {
-        std::vector<std::string> path = split(pathAndData->path());
-        std::vector<std::string> data = split(pathAndData->data());
-        std::string hostname = path[0];
-        std::string port = path[1];
-        int clusterId = std::stoi(data[0]) - 1;
-        int serverId = std::stoi(data[1]);
-        int index = findServer(clusters[clusterId], serverId);
-        // If this serverId already exists in clusterId return grpc::NOT_POSSIBLE
-        if (index != -1) {
-            status->set_status(false);
-            return Status::OK;
+        std::vector<zNode*> cluster = clusters[clusterID];
+        std::string hostname = "";
+        std::string port = "";
+        for (auto server : cluster) {
+            if (server->type == std::string("master")) {
+                hostname = server->hostname;
+                port = server->port;
+            }
         }
-        v_mutex.lock();
-        zNode* newServer = new zNode();
-        newServer->serverID = serverId;  // Assuming ServerInfo has an id() method
-        newServer->hostname = hostname;  // Assuming ServerInfo has a hostname() method
-        newServer->port = port;          // Assuming ServerInfo has a port() method
-        newServer->last_heartbeat = getTimeNow();
-        newServer->missed_heartbeat = false;
-        clusters[clusterId].push_back(newServer);  // Adjust as needed
-        log(INFO, "Server Added!\t Server ID:\t" + std::to_string(serverId) + " to cluster ID:\t" + std::to_string(clusterId));
-        status->set_status(true);
-        v_mutex.unlock();
+        serverInfo->set_hostname(hostname);
+        serverInfo->set_port(port);
         return Status::OK;
     }
-
 };
 
 void RunServer(std::string port_no) {
@@ -207,19 +216,9 @@ int main(int argc, char** argv) {
 
 int findServer(std::vector<zNode*> v, int id) {
     v_mutex.lock();
-    int result = v.size() > 0? 0 : -1;
+    int result = v.size() > 0 ? 0 : -1;
     v_mutex.unlock();
     return result;
-    // // iterating through the clusters vector of vectors of znodes
-    // for (int i = 0; i < v.size(); i++) {
-    //     if (v[i]->serverID == id) {
-    //         // std::cout << "missed heartbeat from server " << s->serverID << std::endl;
-    //         return 0;
-    //     }
-    // }
-
-    // // v_mutex.unlock();
-    // return -1;
 }
 
 void checkHeartbeat() {
@@ -237,11 +236,10 @@ void checkHeartbeat() {
                     log(WARNING, "Encountered null server pointer, skipping...");
                     continue;  // Skip if the server pointer is null
                 }
-                if (difftime(getTimeNow(), s->last_heartbeat) > 10) {
+                if (difftime(getTimeNow(), s->last_heartbeat) > 15) {
                     log(WARNING, "Missed Heartbeat from server\t" + std::to_string(s->serverID));
                     if (!s->missed_heartbeat) {
                         s->missed_heartbeat = true;
-                        s->last_heartbeat = getTimeNow();
                     }
                 }
             }
