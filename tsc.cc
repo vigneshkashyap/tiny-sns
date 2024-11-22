@@ -85,8 +85,11 @@ int Client::connectTo() {
     ClientContext context;
     ID id;
     id.set_id(std::stoi(username));
+    // std::cout<<"Stub with coord";
     grpc::Status status = stub_coordinator->GetServer(&context, id, &serverInfo);
+    // std::cout<<"coord responded";
     if (!status.ok()) {
+        // std::cout<<"coord responded with error";
         // grpc::StatusCode status_code = status.error_code();
         // if (status_code == grpc::StatusCode::ALREADY_EXISTS) {
         //     ire.comm_status = FAILURE_INVALID_USERNAME;
@@ -96,7 +99,9 @@ int Client::connectTo() {
     }
     hostname = serverInfo.hostname();
     port = serverInfo.port();
+    // std::cout<<"Stub creating";
     stub_ = SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
+    // std::cout<<"Stub created";
     IReply ire = Login();
     if (!ire.grpc_status.ok()) {
         return -1;

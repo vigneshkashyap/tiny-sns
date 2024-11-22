@@ -36,7 +36,6 @@
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/util/time_util.h>
 #include <grpc++/grpc++.h>
-#include "sns.grpc.pb.h"
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -50,6 +49,8 @@
 #include <string>
 #include <thread>
 
+#include "sns.grpc.pb.h"
+
 // #include "json.hpp"
 #define log(severity, msg) \
     LOG(severity) << msg;  \
@@ -62,16 +63,16 @@
 
 using csce662::Confirmation;
 using csce662::CoordService;
+using csce662::ID;
 using csce662::ListReply;
 using csce662::Message;
 using csce662::Reply;
-using csce662::Request;
-using csce662::ID;
 using csce662::Request;
 using csce662::ServerInfo;
 using csce662::SNSService;
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
+using grpc::ClientContext;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -79,7 +80,6 @@ using grpc::ServerReader;
 using grpc::ServerReaderWriter;
 using grpc::ServerWriter;
 using grpc::Status;
-using grpc::ClientContext;
 
 struct Client {
     std::string username;
@@ -127,16 +127,21 @@ class CoordinationService {
         this->coordinator_port = coordinator_port;
         firstHeartbeat = true;
     }
-        // Add these getter functions
-    const ServerInfo& getServerInfo() const {
+    // Add these getter functions
+    const ServerInfo &getServerInfo() const {
         return serverInfo;
     }
 
-    SNSService::Stub* getSlaveStub() const {
+    SNSService::Stub *getSlaveStub() const {
         return slaveStub.get();
     }
+
+    std::string filePrefix() {
+        return "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/";
+    }
+
     std::string filePrefix(std::string username) {
-        return "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid())+ "/" + username;
+        return "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/" + username;
     }
 
     void createFolder(const std::string &path) {
@@ -156,7 +161,7 @@ class CoordinationService {
 
     void buildSlaveStub() {
         grpc::ClientContext context;
-        csce662::ServerInfo* slaveServerInfo = new ServerInfo();
+        csce662::ServerInfo *slaveServerInfo = new ServerInfo();
         ID id;
         id.set_id(serverInfo.clusterid());
         Status status = stub_->GetSlave(&context, id, slaveServerInfo);
@@ -192,7 +197,6 @@ class CoordinationService {
                 csce662::Confirmation confirmation;
                 Status status = stub_->Heartbeat(&context, serverInfo, &confirmation);
                 if (!status.ok()) {
-                    // log(ERROR, "gRPC to co-ordinator failed");
                     log(ERROR, "Failed to register with coordinator: " + status.error_message());
                     exit(-1);
                 }
@@ -205,12 +209,14 @@ class CoordinationService {
                 if (serverInfo.ismaster() && !slaveStub) {
                     buildSlaveStub();
                 }
-                serverInfo.set_type(serverInfo.ismaster()? "master" : "slave");
+                // serverInfo.set_type(serverInfo.ismaster()? "master" : "slave");
                 if (firstHeartbeat) {
                     log(INFO, "Server registered successfully with coordinator.");
                     std::string serverFolder = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid());
                     createFolder(serverFolder);
-                    clearClientDB();
+                    if (!confirmation.reconnect()) {
+                        clearClientDB();
+                    }
                     firstHeartbeat = false;
                     if (serverInfo.ismaster()) {
                         buildSlaveStub();
@@ -225,108 +231,126 @@ class CoordinationService {
         }
     }
 
-    void loadClientDB(const std::string &file_path) {
-        std::ifstream file_in(file_path);
-        std::string line;
-        if (!file_in) {
-            std::cerr << "Failed to open the file for reading." << std::endl;
-            return;
-        }
-        while (std::getline(file_in, line)) {
-            if (line == "Client") {
-                Client *client = new Client;
-                // Read client fields
-                std::getline(file_in, client->username);
-                file_in >> client->connected;
-                file_in >> client->following_file_size;
-                file_in >> client->isInitialTimelineRequest;
-                int followers_count, following_count;
-                file_in >> followers_count;
-                file_in.ignore();  // Ignore the newline after followers_count
-                // Load followers (stored as usernames, must relink later)
-                for (int i = 0; i < followers_count; ++i) {
-                    std::string follower_username;
-                    std::getline(file_in, follower_username);
-                    Client *follower = new Client;
-                    follower->username = follower_username;
-                    client->client_followers.push_back(follower);
-                }
-
-                file_in >> following_count;
-                file_in.ignore();  // Ignore the newline after following_count
-                // Load following (stored as usernames, must relink later)
-                for (int i = 0; i < following_count; ++i) {
-                    std::string following_username;
-                    std::getline(file_in, following_username);
-                    Client *following = new Client;
-                    following->username = following_username;
-                    client->client_following.push_back(following);
-                }
-                client_db.push_back(client);
-            }
-        }
-        file_in.close();
-    }
-
-    void relinkClients() {
-        std::unordered_map<std::string, Client *> username_to_client;
-        // Create a mapping from usernames to Client* for easy lookup
-        for (auto *client : client_db) {
-            username_to_client[client->username] = client;
-        }
-        // Relink client followers and following
-        for (auto *client : client_db) {
-            for (auto *&follower : client->client_followers) {
-                follower = username_to_client[follower->username];  // Update to point to the actual client
-            }
-            for (auto *&following : client->client_following) {
-                following = username_to_client[following->username];  // Update to point to the actual client
-            }
-        }
-    }
-
-    void restoreDB() {
-        std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
-        loadClientDB(file_path);
-        relinkClients();
-    }
-
     void clearClientDB() {
-        std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
-        std::ofstream clientDB(file_path, std::ios::trunc);
-        if (clientDB.is_open()) {
-            clientDB.close();  // Close the file
-            log(INFO, "CLient DB file has been trunated");
-        } else {
-            log(WARNING, "CLient DB file does not exist");
+        namespace fs = std::filesystem;
+        std::string directoryPath = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/";
+        try {
+            if (!fs::exists(directoryPath) || !fs::is_directory(directoryPath)) {
+                log(INFO, "Directory does not exist or is not a directory: " + directoryPath );
+                return;
+            }
+            // Iterate over the directory and remove each item
+            for (const auto &entry : fs::directory_iterator(directoryPath)) {
+                fs::remove_all(entry);  // Remove files or subdirectories
+            }
+            log(INFO, "Directory cleared: " + directoryPath);
+        } catch (const std::filesystem::filesystem_error &e) {
+            log(INFO, "Filesystem error:\t" + std::string(e.what()));
+        } catch (const std::exception &e) {
+            log(ERROR, "Error:\t" + std::string(e.what()));
         }
+        // std::ofstream clientDB(file_path, std::ios::trunc);
+        // if (clientDB.is_open()) {
+        //     clientDB.close();  // Close the file
+        //     log(INFO, "CLient DB file has been trunated");
+        // } else {
+        //     log(WARNING, "CLient DB file does not exist");
+        // }
     }
 
-    void saveClientDB() {
-        std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
-        std::ofstream file_out(file_path);
-        if (!file_out) {
-            std::cerr << "Failed to open the file for writing." << std::endl;
+    void loadClientDB() {
+        std::string all_users_path = filePrefix() + "all_users.txt";
+        std::ifstream all_users(all_users_path);
+        std::string username;
+        if (!all_users) {
+            log(ERROR, "Failed to open the file for reading.");
             return;
         }
-        for (const auto *client : client_db) {
-            file_out << "Client\n";
-            file_out << client->username << "\n";
-            file_out << client->connected << "\n";
-            file_out << client->following_file_size << "\n";
-            file_out << client->isInitialTimelineRequest << "\n";
-            file_out << client->client_followers.size() << "\n";
-            // Serialize followers' usernames
-            for (const auto *follower : client->client_followers) {
-                file_out << follower->username << "\n";
+        // Clear the existing client database before reloading
+        client_db.clear();
+        while (std::getline(all_users, username)) {
+            if (username.empty()) {
+                continue;
             }
-            file_out << client->client_following.size() << "\n";
-            // Serialize following users' usernames
-            for (const auto *following : client->client_following) {
-                file_out << following->username << "\n";
+            Client *client = new Client();
+            client->username = username;
+            client_db.push_back(client);
+        }
+        all_users.close();
+        log(INFO, "Client size:\t" + std::to_string(client_db.size()));
+        for (Client *client : client_db) {
+            loadFollowersAndFollowing(client);
+        }
+        log(INFO, "Client size:\t" + std::to_string(client_db.size()));
+    }
+
+    void loadFollowersAndFollowing(Client *client) {
+        std::string following_file_path = filePrefix(client->username) + "_following.txt";
+        std::string followers_file_path = filePrefix(client->username) + "_followers.txt";
+        // Load following
+        std::ifstream following_file(following_file_path);
+        if (!following_file) {
+            log(ERROR, "Failed to open the following file for reading: " + following_file_path);
+            return;
+        }
+        std::string following_username;
+        while (std::getline(following_file, following_username)) {
+            if (following_username.empty()) {
+                continue;
+            }
+            Client *following_client = getClient(following_username);
+            client->client_following.push_back(following_client);
+        }
+        following_file.close();
+        // Load followers
+        std::ifstream followers_file(followers_file_path);
+        if (!followers_file) {
+            log(ERROR, "Failed to open the follower file for reading: " + followers_file_path);
+            return;
+        }
+        std::string follower_username;
+        while (std::getline(followers_file, follower_username)) {
+            if (follower_username.empty()) {
+                continue;
+            }
+            Client *follower_client = getClient(follower_username);
+            client->client_followers.push_back(follower_client);
+        }
+        followers_file.close();
+    }
+
+    // void relinkClients() {
+    //     // Create a mapping from usernames to Client* for easy lookup
+    //     for (auto *client : client_db) {
+    //         username_to_client[client->username] = client;
+    //     }
+    //     // Relink client followers and following
+    //     for (auto *client : client_db) {
+    //         for (auto *&follower : client->client_followers) {
+    //             follower = username_to_client[follower->username];  // Update to point to the actual client
+    //         }
+    //         for (auto *&following : client->client_following) {
+    //             following = username_to_client[following->username];  // Update to point to the actual client
+    //         }
+    //     }
+    // }
+
+    // void restoreDB() {
+    //     std::string file_path = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/client_db.txt";
+    //     // loadClientDB(file_path);
+    //     relinkClients();
+    // }
+
+    Client *getClient(const std::string &username) {
+        // Check if client already exists in the client_db
+        for (Client *client : client_db) {
+            if (client->username.compare(username) == 0) {
+                log(INFO, "We have found the client");
+                return client;  // Return existing client if found
             }
         }
-        file_out.close();
+        log(INFO, "We have not found client");
+        return NULL;
     }
 };
 
@@ -334,15 +358,56 @@ CoordinationService *coordinationService;
 
 class SNSServiceImpl final : public SNSService::Service {
     Client *getClient(std::string username) {
+        // Check if client already exists in the client_db
+        log(INFO, "Client size:\t" + std::to_string(client_db.size()));
         for (Client *client : client_db) {
+            log(INFO, "Curr Username:\t" + client->username);
             if (client->username.compare(username) == 0) {
-                return client;
+                log(INFO, "We have found the client");
+                return client;  // Return existing client if found
             }
         }
+        log(INFO, "We have not found client");
         return NULL;
     }
 
+    // RPC Login
+    Status Login(ServerContext *context, const Request *request, Reply *reply) override {
+        if (coordinationService->getServerInfo().ismaster() && coordinationService->getSlaveStub() != nullptr) {
+            grpc::ClientContext slave_context;
+            Reply slave_reply;
+            grpc::Status status = coordinationService->getSlaveStub()->Login(&slave_context, *request, &slave_reply);
+            if (!status.ok()) {
+                log(ERROR, "Login Failed:\tError forwarding to slave server");
+            }
+        }
+        coordinationService->loadClientDB();
+        // We go over the client_db to check if username already exists, and accordingly return a grpc::Status::ALREADY_EXISTS
+        Client *client = getClient(request->username());
+        if (client == nullptr) {
+            client = new Client();
+            client->username = request->username();
+            client->connected = true;
+            client_db.push_back(client);
+            truncateFile(client->username);
+            std::ofstream all_users(coordinationService->filePrefix() + "all_users.txt", std::ios::app);
+            all_users << request->username() << std::endl;
+            all_users.close();
+        }
+        // if (user_index != NULL) {
+        //     reply->set_msg("Username already exists");
+        //     log(ERROR, "Login Failed:\t\tUsername " + request->username() + " already exists");
+        //     reply->set_msg("1");
+        //     return Status(grpc::StatusCode::ALREADY_EXISTS, "Username already exists");
+        // }
+        // coordinationService->saveClientDB();
+        reply->set_msg("Login successful");
+        log(INFO, "Login Successful:\tUser " + client->username);
+        return Status::OK;
+    }
+
     Status List(ServerContext *context, const Request *request, ListReply *list_reply) override {
+        coordinationService->loadClientDB();
         std::string curr_username = request->username();
         // Iterate over the Client DB and add all usernames, and their followers
         for (Client *user : client_db) {
@@ -367,6 +432,7 @@ class SNSServiceImpl final : public SNSService::Service {
                 log(ERROR, "Follow Failed:\t\tError forwarding to slave server");
             }
         }
+        coordinationService->loadClientDB();
         // Username of the client invoking FOLLOW
         std::string curr_user = request->username();
         // Username of the user to follow
@@ -400,12 +466,12 @@ class SNSServiceImpl final : public SNSService::Service {
         user->client_following.push_back(to_follow);
         to_follow->client_followers.push_back(user);
         std::ofstream following(coordinationService->filePrefix(user->username) + "_following.txt", std::ios::app);
-        std::ofstream followers(coordinationService->filePrefix(to_follow->username) + "_follower.txt", std::ios::app);
+        std::ofstream followers(coordinationService->filePrefix(to_follow->username) + "_followers.txt", std::ios::app);
         following << to_follow->username << std::endl;
         followers << user->username << std::endl;
         following.close();
         followers.close();
-        coordinationService->saveClientDB();
+        // coordinationService->saveClientDB();
         return Status::OK;
     }
 
@@ -418,6 +484,7 @@ class SNSServiceImpl final : public SNSService::Service {
                 log(ERROR, "Follow Failed:\t\tError forwarding to slave server");
             }
         }
+        coordinationService->loadClientDB();
         // Username of the client invoking FOLLOW
         std::string curr_user = request->username();
         // Username of the user to follow
@@ -465,7 +532,7 @@ class SNSServiceImpl final : public SNSService::Service {
         // We need to remove the user from the to_unfollow_user's following vector using follower_index
         to_unfollow_user->client_followers.erase(to_unfollow_user->client_followers.begin() + follower_index);
         removeFromFollowLists(user->username, to_unfollow_user->username);
-        coordinationService->saveClientDB();
+        // coordinationService->saveClientDB();
         log(INFO, "Unfollow Successful:\t\tUser " + curr_user + " unfollowed " + username);
         // We return the success code -> 0 SUCCESS
         reply->set_msg("0");
@@ -474,7 +541,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
     void removeFromFollowLists(const std::string &username, const std::string &to_remove) {
         std::string following_filename = coordinationService->filePrefix(username) + "_following.txt";
-        std::string follower_filename = coordinationService->filePrefix(to_remove) + "_follower.txt";
+        std::string follower_filename = coordinationService->filePrefix(to_remove) + "_followers.txt";
 
         // Helper function to remove a user from a file
         auto removeEntryFromFile = [](const std::string &filename, const std::string &entry_to_remove) {
@@ -513,35 +580,6 @@ class SNSServiceImpl final : public SNSService::Service {
 
         // Remove 'username' from the follower file of 'to_remove'
         removeEntryFromFile(follower_filename, username);
-    }
-
-    // RPC Login
-    Status Login(ServerContext *context, const Request *request, Reply *reply) override {
-        if (coordinationService->getServerInfo().ismaster() && coordinationService->getSlaveStub() != nullptr) {
-            grpc::ClientContext slave_context;
-            Reply slave_reply;
-            grpc::Status status = coordinationService->getSlaveStub()->Login(&slave_context, *request, &slave_reply);
-            if (!status.ok()) {
-                log(ERROR, "Follow Failed:\t\tError forwarding to slave server");
-            }
-        }
-        // We go over the client_db to check if username already exists, and accordingly return a grpc::Status::ALREADY_EXISTS
-        Client *user_index = getClient(request->username());
-        if (user_index != NULL) {
-            reply->set_msg("Username already exists");
-            log(ERROR, "Login Failed:\t\tUsername " + request->username() + " already exists");
-            reply->set_msg("1");
-            return Status(grpc::StatusCode::ALREADY_EXISTS, "Username already exists");
-        }
-        Client *client = new Client();
-        client->username = request->username();
-        client->connected = true;
-        client_db.push_back(client);
-        coordinationService->saveClientDB();
-        truncateFile(client->username);
-        reply->set_msg("Login successful");
-        log(INFO, "Login Successful:\t\tUser " + client->username);
-        return Status::OK;
     }
 
     // Method is used to create a new proto timestamp * from epoch seconds
@@ -612,8 +650,6 @@ class SNSServiceImpl final : public SNSService::Service {
         std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm_time);
         return std::string(buffer);
     }
-
-    // Method invoked when unfollowing is successful, from user's timeline, the to_unfollow_user's posts are removed
 
     // Reads posts from the file and returns them as a vector
     std::vector<Post> parseFileContentForPosts(const std::string &file_path) {
@@ -763,7 +799,7 @@ class SNSServiceImpl final : public SNSService::Service {
         std::string timeline_path = coordinationService->filePrefix(username) + "_timeline.txt";
         std::string posts_path = coordinationService->filePrefix(username) + "_posts.txt";
         std::string following_path = coordinationService->filePrefix(username) + "_following.txt";
-        std::string follower_path = coordinationService->filePrefix(username) + "_follower.txt";
+        std::string follower_path = coordinationService->filePrefix(username) + "_followers.txt";
         std::ofstream timeline(timeline_path, std::ios::trunc);
         std::ofstream post(posts_path, std::ios::trunc);
         std::ofstream following(following_path, std::ios::trunc);

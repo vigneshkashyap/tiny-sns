@@ -19,12 +19,11 @@ message ServerInfo{
     int32 clusterID = 5;
     bool isMaster = 6;
 }
-// TODO: check which extra stuff in the coordinator.proto you dont need
 
 //confirmation message definition
 message Confirmation{
     bool status = 1;
-    bool isMaster = 2;
+    bool reconnect = 2;
 }
 
 //id message definition

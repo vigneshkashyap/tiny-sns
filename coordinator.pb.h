@@ -472,7 +472,7 @@ class Confirmation final :
 
   enum : int {
     kStatusFieldNumber = 1,
-    kIsMasterFieldNumber = 2,
+    kReconnectFieldNumber = 2,
   };
   // bool status = 1;
   void clear_status() ;
@@ -484,14 +484,14 @@ class Confirmation final :
   void _internal_set_status(bool value);
 
   public:
-  // bool isMaster = 2;
-  void clear_ismaster() ;
-  bool ismaster() const;
-  void set_ismaster(bool value);
+  // bool reconnect = 2;
+  void clear_reconnect() ;
+  bool reconnect() const;
+  void set_reconnect(bool value);
 
   private:
-  bool _internal_ismaster() const;
-  void _internal_set_ismaster(bool value);
+  bool _internal_reconnect() const;
+  void _internal_set_reconnect(bool value);
 
   public:
   // @@protoc_insertion_point(class_scope:csce662.Confirmation)
@@ -503,7 +503,7 @@ class Confirmation final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     bool status_;
-    bool ismaster_;
+    bool reconnect_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1769,24 +1769,24 @@ inline void Confirmation::_internal_set_status(bool value) {
   _impl_.status_ = value;
 }
 
-// bool isMaster = 2;
-inline void Confirmation::clear_ismaster() {
-  _impl_.ismaster_ = false;
+// bool reconnect = 2;
+inline void Confirmation::clear_reconnect() {
+  _impl_.reconnect_ = false;
 }
-inline bool Confirmation::ismaster() const {
-  // @@protoc_insertion_point(field_get:csce662.Confirmation.isMaster)
-  return _internal_ismaster();
+inline bool Confirmation::reconnect() const {
+  // @@protoc_insertion_point(field_get:csce662.Confirmation.reconnect)
+  return _internal_reconnect();
 }
-inline void Confirmation::set_ismaster(bool value) {
-  _internal_set_ismaster(value);
-  // @@protoc_insertion_point(field_set:csce662.Confirmation.isMaster)
+inline void Confirmation::set_reconnect(bool value) {
+  _internal_set_reconnect(value);
+  // @@protoc_insertion_point(field_set:csce662.Confirmation.reconnect)
 }
-inline bool Confirmation::_internal_ismaster() const {
-  return _impl_.ismaster_;
+inline bool Confirmation::_internal_reconnect() const {
+  return _impl_.reconnect_;
 }
-inline void Confirmation::_internal_set_ismaster(bool value) {
+inline void Confirmation::_internal_set_reconnect(bool value) {
   ;
-  _impl_.ismaster_ = value;
+  _impl_.reconnect_ = value;
 }
 
 // -------------------------------------------------------------------

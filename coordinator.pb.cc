@@ -56,7 +56,7 @@ PROTOBUF_CONSTEXPR Confirmation::Confirmation(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.status_)*/ false
 
-  , /*decltype(_impl_.ismaster_)*/ false
+  , /*decltype(_impl_.reconnect_)*/ false
 
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct ConfirmationDefaultTypeInternal {
@@ -185,7 +185,7 @@ const ::uint32_t TableStruct_coordinator_2eproto::offsets[] PROTOBUF_SECTION_VAR
     ~0u,  // no _split_
     ~0u,  // no sizeof(Split)
     PROTOBUF_FIELD_OFFSET(::csce662::Confirmation, _impl_.status_),
-    PROTOBUF_FIELD_OFFSET(::csce662::Confirmation, _impl_.ismaster_),
+    PROTOBUF_FIELD_OFFSET(::csce662::Confirmation, _impl_.reconnect_),
     ~0u,  // no _has_bits_
     PROTOBUF_FIELD_OFFSET(::csce662::ID, _internal_metadata_),
     ~0u,  // no _extensions_
@@ -264,29 +264,29 @@ const char descriptor_table_protodef_coordinator_2eproto[] PROTOBUF_SECTION_VARI
     "tobuf/timestamp.proto\"q\n\nServerInfo\022\020\n\010s"
     "erverID\030\001 \001(\005\022\020\n\010hostname\030\002 \001(\t\022\014\n\004port\030"
     "\003 \001(\t\022\014\n\004type\030\004 \001(\t\022\021\n\tclusterID\030\005 \001(\005\022\020"
-    "\n\010isMaster\030\006 \001(\010\"0\n\014Confirmation\022\016\n\006stat"
-    "us\030\001 \001(\010\022\020\n\010isMaster\030\002 \001(\010\"\020\n\002ID\022\n\n\002id\030\001"
-    " \001(\005\".\n\004TLFL\022\016\n\006status\030\001 \001(\010\022\n\n\002TL\030\002 \003(\t"
-    "\022\n\n\002FL\030\003 \003(\t\"\031\n\010AllUsers\022\r\n\005users\030\001 \003(\t\""
-    "=\n\025SynchronizerListReply\022\021\n\tall_users\030\001 "
-    "\003(\t\022\021\n\tfollowers\030\002 \003(\t\"L\n\nServerList\022\020\n\010"
-    "serverID\030\001 \003(\005\022\020\n\010hostname\030\002 \003(\t\022\014\n\004port"
-    "\030\003 \003(\t\022\014\n\004type\030\004 \003(\t2\240\002\n\014CoordService\022.\n"
-    "\010GetSlave\022\013.csce662.ID\032\023.csce662.ServerI"
-    "nfo\"\000\0229\n\tHeartbeat\022\023.csce662.ServerInfo\032"
-    "\025.csce662.Confirmation\"\000\022/\n\tGetServer\022\013."
-    "csce662.ID\032\023.csce662.ServerInfo\"\000\022;\n\025Get"
-    "AllFollowerServers\022\013.csce662.ID\032\023.csce66"
-    "2.ServerList\"\000\0227\n\021GetFollowerServer\022\013.cs"
-    "ce662.ID\032\023.csce662.ServerInfo\"\0002\256\002\n\014Sync"
-    "hService\0229\n\013GetAllUsers\022\025.csce662.Confir"
-    "mation\032\021.csce662.AllUsers\"\000\0228\n\024GetFollow"
-    "ersOfClient\022\013.csce662.ID\032\021.csce662.AllUs"
-    "ers\"\000\022\'\n\007GetTLFL\022\013.csce662.ID\032\r.csce662."
-    "TLFL\"\000\022=\n\rResynchServer\022\023.csce662.Server"
-    "Info\032\025.csce662.Confirmation\"\000\022A\n\020Synchro"
-    "nizerList\022\013.csce662.ID\032\036.csce662.Synchro"
-    "nizerListReply\"\000b\006proto3"
+    "\n\010isMaster\030\006 \001(\010\"1\n\014Confirmation\022\016\n\006stat"
+    "us\030\001 \001(\010\022\021\n\treconnect\030\002 \001(\010\"\020\n\002ID\022\n\n\002id\030"
+    "\001 \001(\005\".\n\004TLFL\022\016\n\006status\030\001 \001(\010\022\n\n\002TL\030\002 \003("
+    "\t\022\n\n\002FL\030\003 \003(\t\"\031\n\010AllUsers\022\r\n\005users\030\001 \003(\t"
+    "\"=\n\025SynchronizerListReply\022\021\n\tall_users\030\001"
+    " \003(\t\022\021\n\tfollowers\030\002 \003(\t\"L\n\nServerList\022\020\n"
+    "\010serverID\030\001 \003(\005\022\020\n\010hostname\030\002 \003(\t\022\014\n\004por"
+    "t\030\003 \003(\t\022\014\n\004type\030\004 \003(\t2\240\002\n\014CoordService\022."
+    "\n\010GetSlave\022\013.csce662.ID\032\023.csce662.Server"
+    "Info\"\000\0229\n\tHeartbeat\022\023.csce662.ServerInfo"
+    "\032\025.csce662.Confirmation\"\000\022/\n\tGetServer\022\013"
+    ".csce662.ID\032\023.csce662.ServerInfo\"\000\022;\n\025Ge"
+    "tAllFollowerServers\022\013.csce662.ID\032\023.csce6"
+    "62.ServerList\"\000\0227\n\021GetFollowerServer\022\013.c"
+    "sce662.ID\032\023.csce662.ServerInfo\"\0002\256\002\n\014Syn"
+    "chService\0229\n\013GetAllUsers\022\025.csce662.Confi"
+    "rmation\032\021.csce662.AllUsers\"\000\0228\n\024GetFollo"
+    "wersOfClient\022\013.csce662.ID\032\021.csce662.AllU"
+    "sers\"\000\022\'\n\007GetTLFL\022\013.csce662.ID\032\r.csce662"
+    ".TLFL\"\000\022=\n\rResynchServer\022\023.csce662.Serve"
+    "rInfo\032\025.csce662.Confirmation\"\000\022A\n\020Synchr"
+    "onizerList\022\013.csce662.ID\032\036.csce662.Synchr"
+    "onizerListReply\"\000b\006proto3"
 };
 static const ::_pbi::DescriptorTable* const descriptor_table_coordinator_2eproto_deps[1] =
     {
@@ -296,7 +296,7 @@ static ::absl::once_flag descriptor_table_coordinator_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_coordinator_2eproto = {
     false,
     false,
-    1064,
+    1065,
     descriptor_table_protodef_coordinator_2eproto,
     "coordinator.proto",
     &descriptor_table_coordinator_2eproto_once,
@@ -740,7 +740,7 @@ inline void Confirmation::SharedCtor(::_pb::Arena* arena) {
   new (&_impl_) Impl_{
       decltype(_impl_.status_) { false }
 
-    , decltype(_impl_.ismaster_) { false }
+    , decltype(_impl_.reconnect_) { false }
 
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -770,8 +770,8 @@ void Confirmation::Clear() {
   (void) cached_has_bits;
 
   ::memset(&_impl_.status_, 0, static_cast<::size_t>(
-      reinterpret_cast<char*>(&_impl_.ismaster_) -
-      reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.ismaster_));
+      reinterpret_cast<char*>(&_impl_.reconnect_) -
+      reinterpret_cast<char*>(&_impl_.status_)) + sizeof(_impl_.reconnect_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -790,10 +790,10 @@ const char* Confirmation::_InternalParse(const char* ptr, ::_pbi::ParseContext* 
           goto handle_unusual;
         }
         continue;
-      // bool isMaster = 2;
+      // bool reconnect = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::uint8_t>(tag) == 16)) {
-          _impl_.ismaster_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          _impl_.reconnect_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else {
           goto handle_unusual;
@@ -835,11 +835,11 @@ failure:
         1, this->_internal_status(), target);
   }
 
-  // bool isMaster = 2;
-  if (this->_internal_ismaster() != 0) {
+  // bool reconnect = 2;
+  if (this->_internal_reconnect() != 0) {
     target = stream->EnsureSpace(target);
     target = ::_pbi::WireFormatLite::WriteBoolToArray(
-        2, this->_internal_ismaster(), target);
+        2, this->_internal_reconnect(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -863,8 +863,8 @@ failure:
     total_size += 2;
   }
 
-  // bool isMaster = 2;
-  if (this->_internal_ismaster() != 0) {
+  // bool reconnect = 2;
+  if (this->_internal_reconnect() != 0) {
     total_size += 2;
   }
 
@@ -889,8 +889,8 @@ void Confirmation::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::P
   if (from._internal_status() != 0) {
     _this->_internal_set_status(from._internal_status());
   }
-  if (from._internal_ismaster() != 0) {
-    _this->_internal_set_ismaster(from._internal_ismaster());
+  if (from._internal_reconnect() != 0) {
+    _this->_internal_set_reconnect(from._internal_reconnect());
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
@@ -910,8 +910,8 @@ void Confirmation::InternalSwap(Confirmation* other) {
   using std::swap;
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(Confirmation, _impl_.ismaster_)
-      + sizeof(Confirmation::_impl_.ismaster_)
+      PROTOBUF_FIELD_OFFSET(Confirmation, _impl_.reconnect_)
+      + sizeof(Confirmation::_impl_.reconnect_)
       - PROTOBUF_FIELD_OFFSET(Confirmation, _impl_.status_)>(
           reinterpret_cast<char*>(&_impl_.status_),
           reinterpret_cast<char*>(&other->_impl_.status_));

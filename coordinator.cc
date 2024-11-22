@@ -52,8 +52,10 @@ struct zNode {
     std::string hostname;
     std::string port;
     std::string type;
+    bool isMaster;
     std::time_t last_heartbeat;
     bool missed_heartbeat;
+    int num_missed_heartbeat;
     bool isActive();
 };
 
@@ -82,72 +84,178 @@ bool zNode::isActive() {
     return status;
 }
 
+zNode* findNode(const std::vector<zNode*>& cluster, std::function<bool(zNode*)> predicate) {
+    auto it = std::find_if(cluster.begin(), cluster.end(), predicate);
+    return (it != cluster.end()) ? *it : nullptr;
+}
+
+zNode* createZNode(int serverId, const std::string& hostname, const std::string& port, const std::string& type, bool isMaster) {
+    zNode* server = new zNode();
+    server->serverID = serverId;
+    server->hostname = hostname;
+    server->port = port;
+    server->type = type;
+    server->last_heartbeat = getTimeNow();
+    server->missed_heartbeat = false;
+    server->num_missed_heartbeat = 0;
+    server->isMaster = isMaster;
+    return server;
+}
+
 class CoordServiceImpl final : public CoordService::Service {
     Status Heartbeat(ServerContext* context, const ServerInfo* serverInfo, Confirmation* confirmation) override {
         int serverId = serverInfo->serverid();
         int clusterid = serverInfo->clusterid();
         v_mutex.lock();
         std::vector<zNode*> cluster = clusters[clusterid - 1];
-        zNode *server = new zNode();
-        server->serverID = serverId;
-        server->hostname = serverInfo->hostname();
-        server->port = serverInfo->port();
-        server->type = serverInfo->type();
-        server->last_heartbeat = getTimeNow();
-        server->missed_heartbeat = false;
-        if (cluster.size() == 0) {
-            server->type = "master";
-            confirmation->set_status(true);
-            clusters[clusterid - 1].push_back(server);
-            log(INFO, "Master added");
-        } else if (cluster.size() == 1 && clusters[clusterid - 1][0]->serverID != serverId) {
-            server->type = "slave";
-            confirmation->set_status(false);
-            clusters[clusterid - 1].push_back(server);
-            log(INFO, "Slave added");
-        } else {
-            zNode *currServer = clusters[clusterid - 1][serverId - 1];
-            // Heartbeat
-            if (server->type == std::string("master")) {
+        zNode* node = findNode(cluster, [&](zNode* s) { return s->serverID == serverId && s->type == serverInfo->type(); });
+        zNode* master = findNode(cluster, [&](zNode* s) { return s->type == serverInfo->type() && s->isMaster == true; });
+        if (node == nullptr) {
+            zNode* server = createZNode(serverId, serverInfo->hostname(), serverInfo->port(), serverInfo->type(), serverInfo->ismaster());
+            if (master == nullptr) {
+                server->isMaster = true;
                 confirmation->set_status(true);
-                currServer->last_heartbeat = server->last_heartbeat;
-                currServer->missed_heartbeat = server->missed_heartbeat;
-                // We have received a heartbeat from master
-                // log(INFO, "Master Heartbeat:\t" + std::to_string(currServer->last_heartbeat));
-                // log(INFO, "Master heartbeat" + currServer->last_heartbeat);
+                confirmation->set_reconnect(false);
+                clusters[clusterid - 1].push_back(server);
+                log(INFO, "Master " + serverInfo->type() + " added in cluster " + std::to_string(clusterid));
             } else {
-                // Slave has sent heartbeat
-                // Check if Master has missedHeartbeat, then this becomes the master, and that becomes slave
-                int masterServerID = serverId == 1? 1 : 0;
-                zNode* master = clusters[clusterid - 1][masterServerID];
-                currServer->last_heartbeat = server->last_heartbeat;
-                currServer->missed_heartbeat = server->missed_heartbeat;
+                server->isMaster = false;
+                confirmation->set_status(false);
+                confirmation->set_reconnect(false);
+                clusters[clusterid - 1].push_back(server);
+                log(INFO, "Slave " + serverInfo->type() + " added in cluster " + std::to_string(clusterid));
+            }
+        } else {
+            confirmation->set_reconnect(true);
+            // If we do have this node, then we update the last_heartbeat, and set confirmation, if it is a slave
+            node->last_heartbeat = getTimeNow();
+            node->missed_heartbeat = false;
+            if (node->isMaster) {
+                // node->isMaster = true;
                 confirmation->set_status(true);
-                if (master->missed_heartbeat) {
-                    master->type = "slave";
-                    currServer->type = "master";
+                node->num_missed_heartbeat = 0;
+                log(INFO, "Master " + serverInfo->type() + " Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+            } else {
+                // node->isMaster = false;
+                confirmation->set_status(false);
+                log(INFO, "Slave " + serverInfo->type() + " Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+                node->last_heartbeat = getTimeNow();
+                confirmation->set_status(true);
+                if (master->missed_heartbeat && master->num_missed_heartbeat >= 2) {
+                    master->isMaster = false;
+                    node->isMaster = true;
                     confirmation->set_status(false);
-                    log(INFO, "Slave becomes Master:\t");
+                    log(INFO, "Slave " + serverInfo->type() + " becomes Master in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
                 }
             }
         }
+        // if (serverInfo->type() == "server") {
+        //     // If we do not have the node, we check if there is a master or slave, and accoridngly assign
+        //     if (node == nullptr) {
+        //         zNode* server = createZNode(serverId, serverInfo->hostname(), serverInfo->port(), serverInfo->type(), serverInfo->ismaster());
+        //         if (master == nullptr) {
+        //             server->isMaster = true;
+        //             confirmation->set_status(true);
+        //             clusters[clusterid - 1].push_back(server);
+        //             log(INFO, "Master Server added in cluster " + std::to_string(clusterid));
+        //         } else {
+        //             server->isMaster = false;
+        //             confirmation->set_status(false);
+        //             clusters[clusterid - 1].push_back(server);
+        //             log(INFO, "Slave Server added in cluster " + std::to_string(clusterid));
+        //         }
+        //     } else {
+        //         // If we do have this node, then we update the last_heartbeat, and set confirmation, if it is a slave
+        //         node->last_heartbeat = getTimeNow();
+        //         node->missed_heartbeat = false;
+        //         if (node->isMaster) {
+        //             // node->isMaster = true;
+        //             confirmation->set_status(true);
+        //             node->num_missed_heartbeat = 0;
+        //             log(INFO, "Master Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+        //         } else {
+        //             // node->isMaster = false;
+        //             confirmation->set_status(false);
+        //             log(INFO, "Slave Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+        //             node->last_heartbeat = getTimeNow();
+        //             confirmation->set_status(true);
+        //             if (master->missed_heartbeat && master->num_missed_heartbeat >= 2) {
+        //                 master->isMaster = false;
+        //                 node->isMaster = true;
+        //                 confirmation->set_status(false);
+        //                 log(INFO, "Slave becomes Master in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+        //             }
+        //         }
+        //     }
+        // } else if (serverInfo->type() == "synchronizer") {
+        //     // zNode* server = findNode(cluster, [&](zNode* s) { return s->serverID == serverId && s->type == "synchronizer"; });
+        //     if (node == nullptr) {
+        //         zNode* server = createZNode(serverId, serverInfo->hostname(), serverInfo->port(), serverInfo->type(), serverInfo->ismaster());
+        //         if (master == nullptr) {
+        //             server->isMaster = true;
+        //             confirmation->set_status(true);
+        //             clusters[clusterid - 1].push_back(server);
+        //             log(INFO, "Master Synchronizer added in cluster " + std::to_string(clusterid));
+        //         } else {
+        //             server->isMaster = false;
+        //             confirmation->set_status(false);
+        //             clusters[clusterid - 1].push_back(server);
+        //             log(INFO, "Slave Synchronizer added in cluster " + std::to_string(clusterid));
+        //         }
+        //     } else {
+        //         // If we do have this node, then we update the last_heartbeat, and set confirmation, if it is a slave
+        //         node->last_heartbeat = getTimeNow();
+        //         node->missed_heartbeat = false;
+        //         if (node->isMaster) {
+        //             confirmation->set_status(true);
+        //             node->num_missed_heartbeat = 0;
+        //             log(INFO, "Master Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+        //         } else {
+        //             confirmation->set_status(false);
+        //             log(INFO, "Slave Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+        //             node->last_heartbeat = getTimeNow();
+        //             confirmation->set_status(true);
+        //             if (master->missed_heartbeat && master->num_missed_heartbeat >= 2) {
+        //                 master->isMaster = false;
+        //                 node->isMaster = true;
+        //                 confirmation->set_status(false);
+        //                 log(INFO, "Slave becomes Master in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+        //             }
+        //         }
+        //         // // If we do have this node, then we update the last_heartbeat, and set confirmation, if it is a slave
+        //         // zNode* server = findNode(cluster, [&](zNode* s) { return s->serverID == serverId && s->type == "server"; });
+        //         // node->last_heartbeat = getTimeNow();
+        //         // node->missed_heartbeat = false;
+        //         // if (server->isMaster != node->isMaster) {
+        //         //     // Roles have been altered
+        //         //     confirmation->set_status(false);
+        //         //     node->isMaster = server->isMaster;
+        //         // } else {
+        //         //     confirmation->set_status(true);
+        //         //     log(INFO, "Synchronizer Heartbeat received in cluster " + std::to_string(clusterid));
+        //         // }
+        //     }
+        // } else {
+        //     log(ERROR, "Unknown server type: " + serverInfo->type());
+        // }
         v_mutex.unlock();
         return Status::OK;
     }
 
-    Status GetSlave (ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
-        log(INFO, "Get Slave Request by Server ID:\t" + std::to_string(id->id()));
+    Status GetSlave(ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
+        log(INFO, "Get Slave Request in Cluster ID:\t" + std::to_string(id->id()));
         std::vector<zNode*> cluster = clusters[id->id() - 1];
         int clusterId = id->id();
-        for (auto server: cluster) {
-            if (server->type == std::string("slave")) {
-                serverInfo->set_hostname(server->hostname);
-                serverInfo->set_port(server->port);
-                log(INFO, "Slave Hostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
-                return Status::OK;
-            }
+        zNode* node = findNode(cluster, [&](zNode* s) {
+            return s->type == "server" && s->isMaster == false;
+        });
+        if (node == nullptr) {
+            return grpc::Status(grpc::StatusCode::NOT_FOUND, "Slave server not found");
         }
-        return grpc::Status(grpc::StatusCode::NOT_FOUND, "Slave server not found");
+        serverInfo->set_hostname(node->hostname);
+        serverInfo->set_port(node->port);
+        log(INFO, "Slave Hostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
+        return Status::OK;
     }
 
     Status GetServer(ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
@@ -155,18 +263,50 @@ class CoordServiceImpl final : public CoordService::Service {
         int clientID = id->id();
         int clusterID = ((clientID - 1) % 3);
         std::vector<zNode*> cluster = clusters[clusterID];
-        std::string hostname = "";
-        std::string port = "";
-        for (auto server : cluster) {
-            if (server->type == std::string("master")) {
-                hostname = server->hostname;
-                port = server->port;
-            }
+        zNode* node = findNode(cluster, [&](zNode* s) {
+            return s->type == "server" && s->isMaster == true;
+        });
+        if (node == nullptr) {
+            return grpc::Status(grpc::StatusCode::NOT_FOUND, "Master server not found");
         }
-        serverInfo->set_hostname(hostname);
-        serverInfo->set_port(port);
+        serverInfo->set_hostname(node->hostname);
+        serverInfo->set_port(node->port);
+        log(INFO, "Master found in " + std::to_string(clusterID) + "\tHostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
         return Status::OK;
     }
+
+    Status GetAllFollowerServers(ServerContext* context, const ID* id, ServerList* serverList) override {
+        for (const auto& cluster : clusters) {
+            // For each server in the cluster, check if it's a follower synchronizer.
+            for (zNode* node : cluster) {
+                if (node->type == "synchronizer") {
+                    // Add the follower synchronizer's details to the response.
+                    serverList->add_serverid(node->serverID);
+                    serverList->add_hostname(node->hostname);
+                    serverList->add_port(node->port);
+                    serverList->add_type(node->type);
+                }
+            }
+        }
+        // Log the success.
+        log(INFO, "Found " + std::to_string(serverList->serverid_size()) + " follower synchronizers across all clusters.");
+        return grpc::Status::OK;
+    }
+
+    // Status GetFollowerServer(ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
+    //     int clusterID = id->id();
+    //     std::vector<zNode*> cluster = clusters[clusterID];
+    //     zNode* node = findNode(cluster, [&](zNode* s) {
+    //         return s->type == "server" && s->isMaster == true;
+    //     });
+    //     if (node == nullptr) {
+    //         return grpc::Status(grpc::StatusCode::NOT_FOUND, "Master server not found");
+    //     }
+    //     serverInfo->set_hostname(node->hostname);
+    //     serverInfo->set_port(node->port);
+    //     log(INFO, "Master found in " + std::to_string(clusterID) + "\tHostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
+    //     return Status::OK;
+    // }
 };
 
 void RunServer(std::string port_no) {
@@ -174,7 +314,7 @@ void RunServer(std::string port_no) {
     std::thread hb(checkHeartbeat);
     // localhost = 127.0.0.1
     std::string server_address("127.0.0.1:" + port_no);
-    CoordServiceImpl service;
+    CoordServiceImpl coordService;
     // grpc::EnableDefaultHealthCheckService(true);
     // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
     ServerBuilder builder;
@@ -182,7 +322,7 @@ void RunServer(std::string port_no) {
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     // Register "service" as the instance through which we'll communicate with
     // clients. In this case it corresponds to an *synchronous* service.
-    builder.RegisterService(&service);
+    builder.RegisterService(&coordService);
     // Finally assemble the server.
     std::unique_ptr<Server> server(builder.BuildAndStart());
     std::cout << "Server listening on " << server_address << std::endl;
@@ -237,10 +377,12 @@ void checkHeartbeat() {
                     continue;  // Skip if the server pointer is null
                 }
                 if (difftime(getTimeNow(), s->last_heartbeat) > 15) {
-                    log(WARNING, "Missed Heartbeat from server\t" + std::to_string(s->serverID));
+                    s->num_missed_heartbeat++;
                     if (!s->missed_heartbeat) {
                         s->missed_heartbeat = true;
                     }
+                } else {
+                    s->num_missed_heartbeat = 0;
                 }
             }
         }
