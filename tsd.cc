@@ -267,14 +267,16 @@ class CoordinationService {
             return;
         }
         // Clear the existing client database before reloading
-        client_db.clear();
         while (std::getline(all_users, username)) {
             if (username.empty()) {
                 continue;
             }
-            Client *client = new Client();
-            client->username = username;
-            client_db.push_back(client);
+            Client *client = getClient(username);
+            if (client == NULL) {
+                client = new Client();
+                client->username = username;
+                client_db.push_back(client);
+            }
         }
         all_users.close();
         log(INFO, "Client size:\t" + std::to_string(client_db.size()));
@@ -285,6 +287,8 @@ class CoordinationService {
     }
 
     void loadFollowersAndFollowing(Client *client) {
+        // client->client_followers.clear();
+        client->client_following.clear();
         std::string following_file_path = filePrefix(client->username) + "_following.txt";
         std::string followers_file_path = filePrefix(client->username) + "_followers.txt";
         // Load following
@@ -314,7 +318,16 @@ class CoordinationService {
                 continue;
             }
             Client *follower_client = getClient(follower_username);
-            client->client_followers.push_back(follower_client);
+            bool followerPresent = false;
+            for (Client *followers: client->client_followers) {
+                if (followers == follower_client) {
+                    followerPresent = true;
+                    break;
+                }
+            }
+            if (!followerPresent) {
+                client->client_followers.push_back(follower_client);
+            }
         }
         followers_file.close();
     }

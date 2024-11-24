@@ -254,6 +254,7 @@ class CoordServiceImpl final : public CoordService::Service {
         }
         serverInfo->set_hostname(node->hostname);
         serverInfo->set_port(node->port);
+        serverInfo->set_serverid(node->serverID);
         log(INFO, "Slave Hostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
         return Status::OK;
     }
@@ -269,6 +270,7 @@ class CoordServiceImpl final : public CoordService::Service {
         if (node == nullptr) {
             return grpc::Status(grpc::StatusCode::NOT_FOUND, "Master server not found");
         }
+        serverInfo->set_serverid(node->serverID);
         serverInfo->set_hostname(node->hostname);
         serverInfo->set_port(node->port);
         log(INFO, "Master found in " + std::to_string(clusterID) + "\tHostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
@@ -288,25 +290,24 @@ class CoordServiceImpl final : public CoordService::Service {
                 }
             }
         }
-        // Log the success.
         log(INFO, "Found " + std::to_string(serverList->serverid_size()) + " follower synchronizers across all clusters.");
         return grpc::Status::OK;
     }
 
-    // Status GetFollowerServer(ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
-    //     int clusterID = id->id();
-    //     std::vector<zNode*> cluster = clusters[clusterID];
-    //     zNode* node = findNode(cluster, [&](zNode* s) {
-    //         return s->type == "server" && s->isMaster == true;
-    //     });
-    //     if (node == nullptr) {
-    //         return grpc::Status(grpc::StatusCode::NOT_FOUND, "Master server not found");
-    //     }
-    //     serverInfo->set_hostname(node->hostname);
-    //     serverInfo->set_port(node->port);
-    //     log(INFO, "Master found in " + std::to_string(clusterID) + "\tHostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
-    //     return Status::OK;
-    // }
+    Status GetFollowerServer(ServerContext* context, const ID* id, ServerInfo* serverInfo) override {
+        int clusterID = id->id();
+        std::vector<zNode*> cluster = clusters[clusterID];
+        zNode* node = findNode(cluster, [&](zNode* s) {
+            return s->type == "server" && s->isMaster == true;
+        });
+        if (node == nullptr) {
+            return grpc::Status(grpc::StatusCode::NOT_FOUND, "Master server not found");
+        }
+        serverInfo->set_hostname(node->hostname);
+        serverInfo->set_port(node->port);
+        log(INFO, "Master found in " + std::to_string(clusterID) + "\tHostname:\t" + serverInfo->hostname() + "\tPort:\t" + serverInfo->port());
+        return Status::OK;
+    }
 };
 
 void RunServer(std::string port_no) {

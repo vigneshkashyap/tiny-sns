@@ -4,7 +4,7 @@
 # chmod +x startup.sh
 
 # Start the coordinator
-./coordinator -p 9000 &
+GLOG_logtostderr=1  ./coordinator -p 9000 &
 
 sleep 2
 
@@ -13,13 +13,13 @@ echo "STARTING TSD PROCESSES"
 
 GLOG_logtostderr=1 ./tsd -c 1 -s 1 -h localhost -k 9000 -p 10000 &
 GLOG_logtostderr=1 ./tsd -c 2 -s 1 -h localhost -k 9000 -p 10001 &
-GLOG_logtostderr=1 ./tsd -c 3 -s 1 -h localhost -k 9000 -p 10002 &
+GLOG_logtostderr=1 ./tsd -c 3 -s 1 -h localhost -k 9000 -p 20000 &
 
 sleep 1
 
-GLOG_logtostderr=1 ./tsd -c 1 -s 2 -h localhost -k 9000 -p 10003 &
-GLOG_logtostderr=1 ./tsd -c 2 -s 2 -h localhost -k 9000 -p 10004 &
-GLOG_logtostderr=1 ./tsd -c 3 -s 2 -h localhost -k 9000 -p 10005 &
+GLOG_logtostderr=1 ./tsd -c 1 -s 2 -h localhost -k 9000 -p 20001 &
+GLOG_logtostderr=1 ./tsd -c 2 -s 2 -h localhost -k 9000 -p 30000 &
+GLOG_logtostderr=1 ./tsd -c 3 -s 2 -h localhost -k 9000 -p 30001 &
 
 
 sleep 1
