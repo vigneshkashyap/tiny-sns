@@ -112,6 +112,10 @@ class SynchronizerRabbitMQ {
     }
 
     void publishMessage(const std::string &queueName, const std::string &message) {
+        if (message.empty() || message == "null") {
+            std::cerr << "Message is null or empty, not publishing to the queue." << std::endl;
+            return;  // Skip publishing if the message is invalid
+        }
         amqp_basic_publish(conn, channel, amqp_empty_bytes, amqp_cstring_bytes(queueName.c_str()),
                            0, 0, NULL, amqp_cstring_bytes(message.c_str()));
     }
@@ -134,7 +138,12 @@ class SynchronizerRabbitMQ {
         }
 
         std::string message(static_cast<char *>(envelope.message.body.bytes), envelope.message.body.len);
+        amqp_basic_ack(conn, channel, envelope.delivery_tag, 0);
         amqp_destroy_envelope(&envelope);
+        if (message.empty() || message == "null") {
+            std::cerr << "Received null or empty message. Skipping processing." << std::endl;
+            return "";  // Return an empty string to indicate invalid message
+        }
         return message;
     }
 
@@ -206,7 +215,6 @@ class SynchronizerRabbitMQ {
 
         Json::StreamWriterBuilder writer;
         std::string message = Json::writeString(writer, relations);
-        std::cout << "Relation, cluster " << clusterID << " Sync ID: " << synchID << " Message:\t" << message << std::endl;
         publishMessage("synch" + std::to_string(synchID) + "_clients_relations_queue", message);
     }
 
@@ -219,7 +227,7 @@ class SynchronizerRabbitMQ {
         for (int i = 1; i <= total_number_of_registered_synchronizers; i++) {
             std::string queueName = "synch" + std::to_string(i) + "_clients_relations_queue";
             std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
-
+            std::cout << "Client relation received in cluster " << clusterID << " Sync ID: " << synchID << " Message:\t" << message << std::endl;
             if (!message.empty()) {
                 Json::CharReaderBuilder readerBuilder;
                 std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
@@ -263,27 +271,33 @@ class SynchronizerRabbitMQ {
                 continue;
             }
             std::vector<std::string> timeline = get_tl_or_fl(synchID, clientId, true);
+            if (timeline.size() == 0) {
+                continue;
+            }
             // std::vector<std::string> followers = getFollowersOfUser(clientId);
             std::vector<std::string> followers = get_tl_or_fl(synchID, clientId, false);
             for (const auto &follower : followers) {
-                std::cout << "Follower:\t" << follower << std::endl;
-                // send the timeline updates of your current user to all its followers
+                // Convert follower to integer
                 int followerId = std::stoi(follower);
-                // Serialize the timeline updates into a message format (e.g., JSON or string)
+
+                // Serialize the timeline updates into a JSON message
                 std::string message = serializeTimelineToJson(follower, timeline);
+
                 // Determine the message queue for the synchronizer responsible for this follower
                 int follower_cluster = ((followerId - 1) % 3) + 1;
                 std::string queueName = "synch" + std::to_string(follower_cluster) + "_timeline_queue";
+
+                // Print debug information
                 std::cout << "Message " << message << " published from " << clusterID << " sync ID " << synchID << " into queue " << queueName << std::endl;
+
                 // Publish the message to the follower's queue
                 publishMessage(queueName, message);
-                // YOUR CODE HERE
             }
         }
     }
 
     std::string serializeTimelineToJson(std::string follower, const std::vector<std::string> &timeline) {
-        Json::Value root;
+        Json::Value root(Json::objectValue);
         Json::Value posts(Json::arrayValue);
 
         for (size_t i = 0; i < timeline.size(); i += 3) {
@@ -302,11 +316,10 @@ class SynchronizerRabbitMQ {
                 posts.append(entry);
             }
         }
-        posts[follower] = posts;
+        root[follower] = posts;
         Json::StreamWriterBuilder writer;
         writer["indentation"] = "";  // Compact output
         std::string serialized = Json::writeString(writer, root);
-        std::cout << "Serialized:\t" + serialized << std::endl;
         return serialized;
     }
 
@@ -314,29 +327,102 @@ class SynchronizerRabbitMQ {
     void consumeTimelines() {
         std::string queueName = "synch" + std::to_string(synchID) + "_timeline_queue";
         std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
-        std::cout << "In cluster " << clusterID << " received for " << synchID << " message:\t" << message << std::endl;
+        std::cout << "Message received in queue:\t" << queueName << " Message:\t" << message << std::endl;
+
         if (!message.empty()) {
-            // consume the message from the queue and update the timeline file of the appropriate client with
-            // the new updates to the timeline of the user it follows
             // Deserialize the message into timeline updates
             Json::CharReaderBuilder readerBuilder;
             std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
             Json::Value root;
             std::string errs;
+
             bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
             if (!parsingSuccessful) {
+                std::cerr << "Failed to parse message: " << errs << std::endl;
                 return;
             }
-            int userId;
-            std::vector<std::string> updates;
-            // deserializeTimelineUpdates(message, updates);
-            // Update the timeline file for the appropriate followers
-            for (const auto &update : updates) {
-                log(INFO, "In cluster " + std::to_string(clusterID) + " received for " + std::to_string(synchID) + " message:\t" + message);
-                // appendToTimelineFile(update);
+            printJsonValue(root);
+
+            std::cout << "Parsing completed successfully." << std::endl;
+
+            // Process each follower's updates
+            for (const auto &followerId : root.getMemberNames()) {
+                const Json::Value &updates = root[followerId];
+                if (!updates.isArray()) {
+                    std::cerr << "Invalid format: Expected array of updates for follower " << followerId << std::endl;
+                    continue;
+                }
+
+                std::cout << "Processing updates for follower: " << followerId << std::endl;
+
+                // Iterate over updates and append them to the timeline file
+                for (const auto &update : updates) {
+                    if (!update.isObject() || !update.isMember("T") || !update.isMember("U") || !update.isMember("W")) {
+                        std::cerr << "Invalid update format for follower " << followerId << std::endl;
+                        printJsonValue(update);
+                        continue;
+                    }
+
+                    std::string timestamp = update["T"].asString();
+                    std::string userId = update["U"].asString();
+                    std::string content = update["W"].asString();
+
+                    std::cout << "Timeline in cluster " << clusterID << " received for " << synchID
+                              << " Update: T=" << timestamp << " U=" << userId << " W=" << content << std::endl;
+
+                    // Format the update into the 3-line format
+                    std::vector<std::string> formattedUpdate = {
+                        "T " + timestamp,
+                        "U " + userId,
+                        "W " + content};
+
+                    // Append to the timeline file
+                    appendToTimelineFile(followerId, formattedUpdate);
+                }
             }
-            // YOUR CODE HERE
         }
+    }
+    void appendToTimelineFile(std::string followerId, const std::vector<std::string> &update) {
+        std::string filename = "./cluster" + std::to_string(clusterID) + "/" + clusterSubdirectory + "/" + followerId + "_timeline.txt";
+        std::ifstream infile(filename);
+        std::unordered_set<std::string> existingUpdates;
+        std::string line;
+
+        // Read the existing timeline file and collect updates as strings
+        while (std::getline(infile, line)) {
+            std::string timestamp, userId, content;
+            if (line.rfind("T ", 0) == 0) {
+                timestamp = line;
+                if (std::getline(infile, userId) && userId.rfind("U ", 0) == 0) {
+                    if (std::getline(infile, content) && content.rfind("W ", 0) == 0) {
+                        std::string combinedUpdate = timestamp + "\n" + userId + "\n" + content;
+                        existingUpdates.insert(combinedUpdate);
+                    }
+                }
+            }
+        }
+        infile.close();
+
+        // Prepare the new update as a single string
+        std::string newUpdate = update[0] + "\n" + update[1] + "\n" + update[2];
+
+        // Append to the file only if the update is unique
+        if (existingUpdates.find(newUpdate) == existingUpdates.end()) {
+            std::ofstream outfile(filename, std::ios::app);
+            outfile << newUpdate << "\n";  // Add a newline after each set of updates
+            outfile.close();
+            std::cout << "Appended new update to " << filename << std::endl;
+        } else {
+            std::cout << "Update already exists in " << filename << std::endl;
+        }
+    }
+
+    void printJsonValue(const Json::Value &value) {
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "  ";  // Pretty print with 2 spaces
+        std::string jsonString = Json::writeString(writer, value);
+        std::cout << "Json::Value as string:\n"
+                  << jsonString << std::endl;
     }
 
    private:
@@ -389,7 +475,7 @@ void RunServer(std::string coordIP, std::string coordPort, std::string port_no, 
             rabbitMQ.consumeUserLists();
             rabbitMQ.consumeClientRelations();
             rabbitMQ.consumeTimelines();
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::this_thread::sleep_for(std::chrono::seconds(10));
             // you can modify this sleep period as per your choice
         } });
 
@@ -497,7 +583,7 @@ void run_synchronizer(std::string coordIP, std::string coordPort, std::string po
         rabbitMQ.publishClientRelations();
 
         // Publish timelines
-        rabbitMQ.publishTimelines();  // To be uncommented
+        rabbitMQ.publishTimelines();
     }
     return;
 }
@@ -613,8 +699,6 @@ std::vector<std::string> get_all_users_func(int synchID) {
     // std::string master_users_file = "./master"+std::to_string(synchID)+"/all_users";
     // std::string slave_users_file = "./slave"+std::to_string(synchID)+"/all_users";
     std::string clusterID = std::to_string(((synchID - 1) % 3) + 1);
-    // std::string master_users_file = "./cluster/" + clusterID + "/1/all_users.txt";
-    // std::string slave_users_file = "./cluster/" + clusterID + "/2/all_users.txt";
     std::string master_users_file = "./cluster" + clusterID + "/1/all_users.txt";
     std::string slave_users_file = "./cluster" + clusterID + "/2/all_users.txt";
     // take longest list and package into AllUsers message
@@ -628,8 +712,6 @@ std::vector<std::string> get_all_users_func(int synchID) {
 }
 
 std::vector<std::string> get_tl_or_fl(int synchID, int clientID, bool tl) {
-    // std::string master_fn = "./master"+std::to_string(synchID)+"/"+std::to_string(clientID);
-    // std::string slave_fn = "./slave"+std::to_string(synchID)+"/" + std::to_string(clientID);
     // std::string master_fn = "cluster_" + std::to_string(clusterID) + "/1/" + std::to_string(clientID);
     // std::string slave_fn = "cluster_" + std::to_string(clusterID) + "/2/" + std::to_string(clientID);
     std::string master_fn = "./cluster" + std::to_string(clusterID) + "/1/" + std::to_string(clientID);
@@ -652,11 +734,11 @@ std::vector<std::string> get_tl_or_fl(int synchID, int clientID, bool tl) {
         return s;
     }
 }
+
 std::vector<std::string> getFollowersOfUser(int ID) {
     std::vector<std::string> followers;
     std::string clientID = std::to_string(ID);
     std::vector<std::string> usersInCluster = get_all_users_func(synchID);
-
     for (auto userID : usersInCluster) {  // Examine each user's following file
         // std::string file = "cluster_" + std::to_string(clusterID) + "/" + clusterSubdirectory + "/" + userID + "_follow_list.txt";
         std::string file = "./cluster" + std::to_string(clusterID) + "/" + clusterSubdirectory + "/" + userID + "_following.txt";
@@ -668,6 +750,5 @@ std::vector<std::string> getFollowersOfUser(int ID) {
         }
         sem_close(fileSem);
     }
-
     return followers;
 }
