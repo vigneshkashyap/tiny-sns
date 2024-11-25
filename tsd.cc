@@ -222,7 +222,7 @@ class CoordinationService {
                         buildSlaveStub();
                     }
                 } else {
-                    log(INFO, "Heartbeat acknowledged");
+                    // log(INFO, "Heartbeat acknowledged");
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(10));  // Sleep before next heartbeat
             }
@@ -358,11 +358,11 @@ class CoordinationService {
         // Check if client already exists in the client_db
         for (Client *client : client_db) {
             if (client->username.compare(username) == 0) {
-                log(INFO, "We have found the client");
+                // log(INFO, "We have found the client");
                 return client;  // Return existing client if found
             }
         }
-        log(INFO, "We have not found client");
+        // log(INFO, "We have not found client");
         return NULL;
     }
 };
@@ -372,15 +372,15 @@ CoordinationService *coordinationService;
 class SNSServiceImpl final : public SNSService::Service {
     Client *getClient(std::string username) {
         // Check if client already exists in the client_db
-        log(INFO, "Client size:\t" + std::to_string(client_db.size()));
+        // log(INFO, "Client size:\t" + std::to_string(client_db.size()));
         for (Client *client : client_db) {
-            log(INFO, "Curr Username:\t" + client->username);
+            // log(INFO, "Curr Username:\t" + client->username);
             if (client->username.compare(username) == 0) {
-                log(INFO, "We have found the client");
+                // log(INFO, "We have found the client");
                 return client;  // Return existing client if found
             }
         }
-        log(INFO, "We have not found client");
+        // log(INFO, "We have not found client");
         return NULL;
     }
 
@@ -678,16 +678,20 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     // Reads posts from the file and returns them as a vector
-    std::vector<Post> parseFileContentForPosts(const std::string &file_path) {
+    std::vector<Post> parseFileContentForPosts(const std::string &file_path, int start_line = 0) {
         std::ifstream file_in(file_path);
         std::vector<Post> posts;
         std::string line;
-
+        int current_line = 0;
+        while (current_line < start_line && std::getline(file_in, line)) {
+            current_line++;
+        }
         while (true) {
             std::vector<std::string> lines;
 
             // Read lines until a blank line (or termination condition) is found
             while (std::getline(file_in, line)) {
+                current_line++;
                 if (line.empty()) {
                     break;  // End of current post
                 }
@@ -853,7 +857,7 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     // Helper method that uses the ServerReaderWriter stream of client, and Client, to get Timeline Posts, sort by timestamp and write them to client
-    void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user) {
+    void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user,std::unordered_map<std::string, int> &lastProcessedLine) {
         std::string timeline_path = coordinationService->filePrefix(user->username) + "_timeline.txt";
         std::vector<Post> posts = parseFileContentForPosts(timeline_path);
         // boolean compare method to sort by larger timestamp
@@ -876,49 +880,79 @@ class SNSServiceImpl final : public SNSService::Service {
             stream->Write(msg);
         }
         log(INFO, "GetTimeline Successful:\tUser " + user->username + " has " + std::to_string(posts_size) + " posts");
+        lastProcessedLine[user->username] = posts_size;
     }
 
-    // Helper method to make Post for a user
-    void makePost(Message new_post, Client *user) {
-        std::string file_path = coordinationService->filePrefix(user->username) + "_posts.txt";
-        for (Client *follower : user->client_followers) {
-            // Send it to all followers
-            if (follower->stream) {
-                log(INFO, "Streaming:\t\tMessage from User " + new_post.username() + " to User " + follower->username);
-                // Using follower's stream to Write the message to follower's Timeline
-                follower->stream->Write(new_post);
+    void monitorTimelineUpdates(Client *user, ServerReaderWriter<Message, Message> *stream, std::unordered_map<std::string, int> &lastProcessedLine) {
+        std::string timelineFile = coordinationService->filePrefix(user->username) + "_timeline.txt";
+        log(INFO, "Started monitoring updates for User " + user->username)
+        while (user->connected) {
+            std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for 5 seconds
+
+            int start_line = lastProcessedLine[user->username];
+            std::vector<Post> newPosts = parseFileContentForPosts(timelineFile, start_line);
+
+            // Send new posts over the stream
+            for (const auto &post : newPosts) {
+                Message msg;
+                msg.set_allocated_timestamp(createProtoTimestampFromEpoch(post.timestamp));
+                msg.set_username(post.username);
+                msg.set_msg(post.content);
+                stream->Write(msg);
+                log(INFO, "Sent new post to User " + user->username + ": " + post.content);
             }
-            std::string follower_timeline_path = coordinationService->filePrefix(follower->username) + "_timeline.txt";
-            log(INFO, "Add To File:\t\tMessage from User " + new_post.username() + " to User " + follower->username + "'s timeline file " + follower_timeline_path);
-            // Write the message regardless to the follower's timeline file
-            addToFile(follower_timeline_path, new_post);
+
+            // Update the last processed line count
+            lastProcessedLine[user->username] += newPosts.size() * 4; // Each post has 3 lines + 1 blank line
         }
+
+        log(INFO, "Stopped monitoring updates for User " + user->username);
+    }
+
+    void makePost(Message new_post, Client *user) {
+        coordinationService->loadClientDB();
+        // Write the post to the user's posts file
         std::string posts_file_path = coordinationService->filePrefix(user->username) + "_posts.txt";
         log(INFO, "Add to File:\t\tMessage from User " + user->username + " to User " + user->username + "'s posts file " + posts_file_path);
         addToFile(posts_file_path, new_post);
+
+        // Write the post to followers' timeline files
+        for (Client *follower : user->client_followers) {
+            std::string follower_timeline_path = coordinationService->filePrefix(follower->username) + "_timeline.txt";
+            log(INFO, "Add To File:\t\tMessage from User " + new_post.username() + " to User " + follower->username + "'s timeline file " + follower_timeline_path);
+            addToFile(follower_timeline_path, new_post);
+        }
     }
 
     Status Timeline(ServerContext *context, ServerReaderWriter<Message, Message> *stream) override {
         Message message;
         Client *user = nullptr;
+        std::unordered_map<std::string, int> lastProcessedLine;
+
         while (stream->Read(&message)) {
-            // std::string input = message.msg();
             user = getClient(message.username());
             user->stream = stream;
-            // isInitialTimelineRequest is defaulted in struct Client to true, whenever user initiates timeline, the first time, timeline displayed
+
+            // Handle the first timeline request
             if (user->isInitialTimelineRequest) {
+                user->connected = true;
                 log(INFO, "Timeline Request:\t\tUser " + message.username());
-                user = getClient(message.username());
-                // Helper Method to get display timeline Posts of user
-                displayTimeline(stream, user);
-                // After first time, the user is not shown the timeline
+                displayTimeline(stream, user, lastProcessedLine);
+
+                // Spawn a thread to monitor timeline updates
+                std::thread monitorThread([this, user, stream, &lastProcessedLine]() {this->monitorTimelineUpdates(user, stream, lastProcessedLine);});
+
+                monitorThread.detach(); // Detach the thread to allow it to run independently
+
                 user->isInitialTimelineRequest = false;
             } else {
+                log(INFO, "Adding a new Post " + message.username());
                 // Helper Method to Broadcast the New Post to all followers and write to the respective files
                 makePost(message, user);
             }
         }
-        user->connected = false;
+
+        user->connected = false; // Mark the user as disconnected
         return Status::OK;
     }
 };

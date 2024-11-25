@@ -114,9 +114,8 @@ class SynchronizerRabbitMQ {
 
     void publishMessage(const std::string &queueName, const std::string &message) {
         if (message.empty() || message == "null") {
-            return;  // Skip publishing if the message is invalid
+            return;
         }
-        // std::cerr << "[Publisher] Message published to queue: " << queueName << "\nMessage Content: " << message << std::endl;
         amqp_basic_publish(conn, channel, amqp_empty_bytes, amqp_cstring_bytes(queueName.c_str()),
                            0, 0, NULL, amqp_cstring_bytes(message.c_str()));
     }
@@ -139,11 +138,9 @@ class SynchronizerRabbitMQ {
         }
 
         std::string message(static_cast<char *>(envelope.message.body.bytes), envelope.message.body.len);
-        // std::cerr << "[Consumer] Message received from queue: " << queueName<< "\nMessage Content: " << message << std::endl;
-        // amqp_basic_ack(conn, channel, envelope.delivery_tag, 0);
         amqp_destroy_envelope(&envelope);
         if (message.empty() || message == "null") {
-            return "";  // Return an empty string to indicate invalid message
+            return "";
         }
         return message;
     }
@@ -165,7 +162,6 @@ class SynchronizerRabbitMQ {
             userList["users"].append(user);
         }
         if (userList["users"].empty()) {
-            // std::cerr << "User list is empty. Skipping publish." << std::endl;
             return;
         }
         Json::StreamWriterBuilder writer;
@@ -175,9 +171,15 @@ class SynchronizerRabbitMQ {
                 continue;
             }
             std::string queueName = "synch" + std::to_string(i) + "_users_queue";
-            publishMessage(queueName, message);
+            auto messageQueuePair = std::make_pair(queueName, message);
+
+            // Check if the pair already exists in the set
+            if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
+                publishMessage(queueName, message); // Publish the message
+                publishedMessages.insert(messageQueuePair); // Add to the set
+                std::cerr << "Published to " << queueName << ": " << message << std::endl;
+            }
         }
-        // std::string queueName = "synch" + std::to_string(synchID) + "_users_queue";
     }
 
     void consumeQueue(std::string queueType) {
@@ -194,64 +196,39 @@ class SynchronizerRabbitMQ {
 
             bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
             if (!parsingSuccessful) {
-                // std::cerr << "Failed to parse message: " << errs << std::endl;
                 return;
             }
             // Ensure the message is a JSON object
             if (!root.isObject()) {
-                // std::cerr << "Invalid JSON format. Expected an object but got something else." << std::endl;
                 return;
             }
 
             // Get the first key
             auto memberNames = root.getMemberNames();
             if (memberNames.empty()) {
-                // std::cerr << "JSON object has no keys. Skipping message." << std::endl;
                 return;
             }
 
             std::string firstKey = memberNames[0];
-            // std::cerr << "Processing message with first key: " << firstKey << std::endl;
 
             // Call the appropriate method based on the first key
             if (firstKey == "users") {
-                // std::cerr << "We got users";
                 consumeUserLists(root);
             } else if (firstKey == "userRelationship") {
-                // std::cerr << "We got user relationship";
                 consumeClientRelations(root[firstKey]);
             } else if (firstKey == "timeline") {
-                // std::cerr << "We got user timeline";
                 consumeTimeline(root[firstKey]);
-            } else {
-                // std::cerr << "Unknown first key: " << firstKey << ". Skipping message." << std::endl;
             }
     }
 
     void consumeUserLists(Json::Value root) {
         std::vector<std::string> allUsers;
-        // YOUR CODE HERE
-
         // TODO: while the number of synchronizers is harcorded as 6 right now, you need to change this
         // to use the correct number of follower synchronizers that exist overall
         // accomplish this by making a gRPC request to the coordinator asking for the list of all follower synchronizers registered with it
-        // for (int i = 1; i <= total_number_of_registered_synchronizers; i++) {
-        //     std::string queueName = "synch" + std::to_string(i) + "_users_queue";
-        //     std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
-        // if (!message.empty()) {
-        // Json::CharReaderBuilder readerBuilder;
-        // std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-        // Json::Value root;
-        // std::string errs;
-        // bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
-        // if (!parsingSuccessful) {
-        //     continue;
-        // }
         for (const auto &user : root["users"]) {
             allUsers.push_back(user.asString());
         }
-        // }
-        // }
         updateAllUsersFile(allUsers);
     }
 
@@ -288,31 +265,20 @@ class SynchronizerRabbitMQ {
                 continue;
             }
             std::string queueName = "synch" + std::to_string(i) + "_users_queue";
-            publishMessage(queueName, message);
+             auto messageQueuePair = std::make_pair(queueName, message);
+
+            // Check if the pair already exists in the set
+            if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
+                publishMessage(queueName, message); // Publish the message
+                publishedMessages.insert(messageQueuePair); // Add to the set
+                std::cerr << "Published to " << queueName << ": " << message << std::endl;
+            }
         }
-        // std::string queueName = "synch" + std::to_string(i) + "_clients_relations_queue";
     }
 
     void consumeClientRelations(Json::Value root) {
         std::vector<std::string> allUsers = get_all_users_func(synchID);
-
-        // YOUR CODE HERE
-
-        // TODO: hardcoding 6 here, but you need to get list of all synchronizers from coordinator as before
-        // for (int i = 1; i <= total_number_of_registered_synchronizers; i++) {
-        // std::string queueName = "synch" + std::to_string(i) + "_clients_relations_queue";
-        // std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
-        // if (!message.empty()) {
-        // Json::CharReaderBuilder readerBuilder;
-        // std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-        // Json::Value root;
-        // std::string errs;
-        // bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
-        // if (!parsingSuccessful) {
-        // continue;
-        // }
         for (const auto &client : allUsers) {
-            // std::string followerFile = "./cluster_" + std::to_string(clusterID) + "/" + clusterSubdirectory + "/" + client + "_followers.txt";
             std::string followerFile = "./cluster" + std::to_string(clusterID) + "/" + clusterSubdirectory + "/" + client + "_followers.txt";
             std::string semName = "/" + std::to_string(clusterID) + "_" + clusterSubdirectory + "_" + client + "_followers.txt";
             sem_t *fileSem = sem_open(semName.c_str(), O_CREAT);
@@ -327,8 +293,6 @@ class SynchronizerRabbitMQ {
             }
             sem_close(fileSem);
         }
-        // }
-        // }
     }
 
     // for every client in your cluster, update all their followers' timeline files
@@ -362,9 +326,18 @@ class SynchronizerRabbitMQ {
                 std::string queueName = "synch" + std::to_string(follower_cluster) + "_timeline_queue";
                 std::string slaveQueueName = "synch" + std::to_string(follower_cluster + 1) + "_timeline_queue";
 
-                // Publish the message to the follower's queue
-                publishMessage(queueName, message);
-                publishMessage(slaveQueueName, message);
+                 auto messageQueuePair = std::make_pair(queueName, message);
+                 auto slaveMessageQueuePair = std::make_pair(slaveQueueName, message);
+
+                // Check if the pair already exists in the set
+                if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
+                    publishMessage(queueName, message); // Publish the message
+                    publishedMessages.insert(messageQueuePair); // Add to the set
+                }
+                if (publishedMessages.find(slaveMessageQueuePair) == publishedMessages.end()) {
+                    publishMessage(slaveQueueName, message); // Publish the message
+                    publishedMessages.insert(slaveMessageQueuePair); // Add to the set
+                }
             }
         }
     }
@@ -405,21 +378,6 @@ class SynchronizerRabbitMQ {
 
     // For each client in your cluster, consume messages from your timeline queue and modify your client's timeline files based on what the users they follow posted to their timeline
     void consumeTimeline(Json::Value root) {
-        // std::string queueName = "synch" + std::to_string(synchID) + "_timeline_queue";
-        // std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
-
-        // if (!message.empty()) {
-        // Deserialize the message into timeline updates
-        // Json::CharReaderBuilder readerBuilder;
-        // std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-        // Json::Value root;
-        // std::string errs;
-
-        // bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
-        // if (!parsingSuccessful) {
-        //     std::cerr << "Failed to parse message: " << errs << std::endl;
-        //     return;
-        // }
         printJsonValue(root);
 
         std::cout << "Parsing completed successfully." << std::endl;
@@ -428,26 +386,18 @@ class SynchronizerRabbitMQ {
         for (const auto &followerId : root.getMemberNames()) {
             const Json::Value &updates = root[followerId];
             if (!updates.isArray()) {
-                // std::cerr << "Invalid format: Expected array of updates for follower " << followerId << std::endl;
                 continue;
             }
-
-            // std::cout << "Processing updates for follower: " << followerId << std::endl;
 
             // Iterate over updates and append them to the timeline file
             for (const auto &update : updates) {
                 if (!update.isObject() || !update.isMember("T") || !update.isMember("U") || !update.isMember("W")) {
-                    // std::cerr << "Invalid update format for follower " << followerId << std::endl;
-                    // printJsonValue(update);
                     continue;
                 }
 
                 std::string timestamp = update["T"].asString();
                 std::string userId = update["U"].asString();
                 std::string content = update["W"].asString();
-
-                // std::cout << "Timeline in cluster " << clusterID << " received for " << synchID
-                        //   << " Update: T=" << timestamp << " U=" << userId << " W=" << content << std::endl;
 
                 // Format the update into the 3-line format
                 std::vector<std::string> formattedUpdate = {
@@ -459,7 +409,6 @@ class SynchronizerRabbitMQ {
                 appendToTimelineFile(followerId, formattedUpdate);
             }
         }
-        // }
     }
     void appendToTimelineFile(std::string followerId, const std::vector<std::string> &update) {
         std::string filename = "./cluster" + std::to_string(clusterID) + "/" + clusterSubdirectory + "/" + followerId + "_timeline.txt";
