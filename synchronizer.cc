@@ -359,9 +359,11 @@ class SynchronizerRabbitMQ {
                 // Determine the message queue for the synchronizer responsible for this follower
                 int follower_cluster = ((followerId - 1) % 3) + 1;
                 std::string queueName = "synch" + std::to_string(follower_cluster) + "_timeline_queue";
+                std::string slaveQueueName = "synch" + std::to_string(follower_cluster + 1) + "_timeline_queue";
 
                 // Publish the message to the follower's queue
                 publishMessage(queueName, message);
+                publishMessage(slaveQueueName, message);
             }
         }
     }

@@ -423,14 +423,27 @@ class SNSServiceImpl final : public SNSService::Service {
         coordinationService->loadClientDB();
         std::string curr_username = request->username();
         // Iterate over the Client DB and add all usernames, and their followers
+        std::vector<std::string> users;
+        std::vector<std::string> followers;
         for (Client *user : client_db) {
-            list_reply->add_all_users(user->username);
+            users.push_back(user->username);
+            // list_reply->add_all_users(user->username);
+
             // When we go over the current user's client, we add all the followers
             if (curr_username.compare(user->username) == 0) {
                 for (Client *follower : user->client_followers) {
-                    list_reply->add_followers(follower->username);
+                    followers.push_back(follower->username);
+                    // list_reply->add_followers(follower->username);
                 }
             }
+        }
+        std::sort(users.begin(), users.end());
+        std::sort(followers.begin(), followers.end());
+        for (std::string user: users) {
+            list_reply->add_all_users(user);
+        }
+        for (std::string follower: followers) {
+            list_reply->add_followers(follower);
         }
         log(INFO, "List Successful:\t\tRequested by User " + curr_username);
         return Status::OK;
@@ -845,7 +858,7 @@ class SNSServiceImpl final : public SNSService::Service {
         std::vector<Post> posts = parseFileContentForPosts(timeline_path);
         // boolean compare method to sort by larger timestamp
         auto compareByTimestamp = [](const Post &a, const Post &b) {
-            return a.timestamp > b.timestamp;
+            return a.timestamp < b.timestamp;
         };
         // Sort method to sort all the posts
         std::sort(posts.begin(), posts.end(), compareByTimestamp);
