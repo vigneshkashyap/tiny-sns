@@ -79,6 +79,7 @@ std::string coordAddr;
 std::string clusterSubdirectory;
 std::vector<std::string> otherHosts;
 std::unordered_map<std::string, int> timelineLengths;
+std::set<std::pair<std::string, std::string>> publishedMessages;
 
 std::vector<std::string> get_lines_from_file(std::string);
 std::vector<std::string> get_all_users_func(int);
@@ -164,7 +165,7 @@ class SynchronizerRabbitMQ {
             userList["users"].append(user);
         }
         if (userList["users"].empty()) {
-            std::cerr << "User list is empty. Skipping publish." << std::endl;
+            // std::cerr << "User list is empty. Skipping publish." << std::endl;
             return;
         }
         Json::StreamWriterBuilder writer;
@@ -220,7 +221,7 @@ class SynchronizerRabbitMQ {
                 // std::cerr << "We got user relationship";
                 consumeClientRelations(root[firstKey]);
             } else if (firstKey == "timeline") {
-                std::cerr << "We got user timeline";
+                // std::cerr << "We got user timeline";
                 consumeTimeline(root[firstKey]);
             } else {
                 // std::cerr << "Unknown first key: " << firstKey << ". Skipping message." << std::endl;
@@ -273,7 +274,7 @@ class SynchronizerRabbitMQ {
         }
         // Check if relations is empty
         if (relations.empty()) {
-            std::cerr << "Client relations are empty. Skipping publish." << std::endl;
+            // std::cerr << "Client relations are empty. Skipping publish." << std::endl;
             return;
         }
         Json::Value root;
@@ -427,17 +428,17 @@ class SynchronizerRabbitMQ {
         for (const auto &followerId : root.getMemberNames()) {
             const Json::Value &updates = root[followerId];
             if (!updates.isArray()) {
-                std::cerr << "Invalid format: Expected array of updates for follower " << followerId << std::endl;
+                // std::cerr << "Invalid format: Expected array of updates for follower " << followerId << std::endl;
                 continue;
             }
 
-            std::cout << "Processing updates for follower: " << followerId << std::endl;
+            // std::cout << "Processing updates for follower: " << followerId << std::endl;
 
             // Iterate over updates and append them to the timeline file
             for (const auto &update : updates) {
                 if (!update.isObject() || !update.isMember("T") || !update.isMember("U") || !update.isMember("W")) {
-                    std::cerr << "Invalid update format for follower " << followerId << std::endl;
-                    printJsonValue(update);
+                    // std::cerr << "Invalid update format for follower " << followerId << std::endl;
+                    // printJsonValue(update);
                     continue;
                 }
 
@@ -445,8 +446,8 @@ class SynchronizerRabbitMQ {
                 std::string userId = update["U"].asString();
                 std::string content = update["W"].asString();
 
-                std::cout << "Timeline in cluster " << clusterID << " received for " << synchID
-                          << " Update: T=" << timestamp << " U=" << userId << " W=" << content << std::endl;
+                // std::cout << "Timeline in cluster " << clusterID << " received for " << synchID
+                        //   << " Update: T=" << timestamp << " U=" << userId << " W=" << content << std::endl;
 
                 // Format the update into the 3-line format
                 std::vector<std::string> formattedUpdate = {
@@ -556,7 +557,7 @@ void RunServer(std::string coordIP, std::string coordPort, std::string port_no, 
             rabbitMQ.consumeQueue("_users_queue");
             rabbitMQ.consumeQueue("_clients_relations_queue");
             rabbitMQ.consumeQueue("_timeline_queue");
-            std::this_thread::sleep_for(std::chrono::seconds(4));
+            std::this_thread::sleep_for(std::chrono::seconds(5));
             // you can modify this sleep period as per your choice
         } });
 
@@ -630,7 +631,7 @@ void run_synchronizer(std::string coordIP, std::string coordPort, std::string po
     // TODO: begin synchronization process
     while (true) {
         // the synchronizers sync files every 5 seconds
-        sleep(5);
+        sleep(3);
         if (!isMaster) {
             continue;
         }
