@@ -125,28 +125,48 @@ class CoordServiceImpl final : public CoordService::Service {
                 clusters[clusterid - 1].push_back(server);
                 log(INFO, "Slave " + serverInfo->type() + " added in cluster " + std::to_string(clusterid));
             }
-        } else {
+        } else if (serverInfo->type() == "server") {
             confirmation->set_reconnect(true);
-            // If we do have this node, then we update the last_heartbeat, and set confirmation, if it is a slave
             node->last_heartbeat = getTimeNow();
             node->missed_heartbeat = false;
             if (node->isMaster) {
-                // node->isMaster = true;
                 confirmation->set_status(true);
                 node->num_missed_heartbeat = 0;
                 log(INFO, "Master " + serverInfo->type() + " Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
             } else {
-                // node->isMaster = false;
-                confirmation->set_status(false);
                 log(INFO, "Slave " + serverInfo->type() + " Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
                 node->last_heartbeat = getTimeNow();
                 confirmation->set_status(true);
                 if (master->missed_heartbeat && master->num_missed_heartbeat >= 2) {
+                    // Fail over, we need to also trigger the failover for
                     master->isMaster = false;
                     node->isMaster = true;
                     confirmation->set_status(false);
+                    zNode* syncMaster = findNode(cluster, [&](zNode* s) { return s->type == "synchronizer" && s->isMaster == true; });
+                    zNode* syncSlave = findNode(cluster, [&](zNode* s) { return s->type == "synchronizer" && s->isMaster == false; });
+                    if (syncMaster != nullptr && syncSlave != nullptr) {
+                        syncMaster->isMaster = false;
+                        syncSlave->isMaster = true;
+                    }
                     log(INFO, "Slave " + serverInfo->type() + " becomes Master in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
                 }
+            }
+        } else {
+            confirmation->set_reconnect(true);
+            node->last_heartbeat = getTimeNow();
+            node->missed_heartbeat = false;
+            std::string role = node->isMaster? "Master " : "Slave ";
+            std::string role_from_sync = serverInfo->ismaster()? "Master " : "Slave ";
+            log(INFO, "Role according to coord:\t" + role + "\tRole acc to sync:\t" + role_from_sync);
+            if (node->isMaster ^ serverInfo->ismaster()) {
+                // Failover
+                node->num_missed_heartbeat = 0;
+                confirmation->set_status(false);
+                log(INFO, "Synch Failover in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
+            } else {
+                confirmation->set_status(true);
+                node->num_missed_heartbeat = 0;
+                log(INFO, role + serverInfo->type() + " Heartbeat received in cluster " + std::to_string(clusterid) + " by " + std::to_string(serverId));
             }
         }
         // if (serverInfo->type() == "server") {

@@ -175,50 +175,49 @@ class SynchronizerRabbitMQ {
 
             // Check if the pair already exists in the set
             if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
-                publishMessage(queueName, message); // Publish the message
-                publishedMessages.insert(messageQueuePair); // Add to the set
-                std::cerr << "Published to " << queueName << ": " << message << std::endl;
+                publishMessage(queueName, message);          // Publish the message
+                publishedMessages.insert(messageQueuePair);  // Add to the set
             }
         }
     }
 
     void consumeQueue(std::string queueType) {
-            std::string queueName = "synch" + std::to_string(synchID) + queueType;
-            std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
-            if (message.empty()) {
-                return;
-            }
-            // Parse the JSON message
-            Json::CharReaderBuilder readerBuilder;
-            std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-            Json::Value root;
-            std::string errs;
+        std::string queueName = "synch" + std::to_string(synchID) + queueType;
+        std::string message = consumeMessage(queueName, 1000);  // 1 second timeout
+        if (message.empty()) {
+            return;
+        }
+        // Parse the JSON message
+        Json::CharReaderBuilder readerBuilder;
+        std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
+        Json::Value root;
+        std::string errs;
 
-            bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
-            if (!parsingSuccessful) {
-                return;
-            }
-            // Ensure the message is a JSON object
-            if (!root.isObject()) {
-                return;
-            }
+        bool parsingSuccessful = reader->parse(message.c_str(), message.c_str() + message.size(), &root, &errs);
+        if (!parsingSuccessful) {
+            return;
+        }
+        // Ensure the message is a JSON object
+        if (!root.isObject()) {
+            return;
+        }
 
-            // Get the first key
-            auto memberNames = root.getMemberNames();
-            if (memberNames.empty()) {
-                return;
-            }
+        // Get the first key
+        auto memberNames = root.getMemberNames();
+        if (memberNames.empty()) {
+            return;
+        }
 
-            std::string firstKey = memberNames[0];
+        std::string firstKey = memberNames[0];
 
-            // Call the appropriate method based on the first key
-            if (firstKey == "users") {
-                consumeUserLists(root);
-            } else if (firstKey == "userRelationship") {
-                consumeClientRelations(root[firstKey]);
-            } else if (firstKey == "timeline") {
-                consumeTimeline(root[firstKey]);
-            }
+        // Call the appropriate method based on the first key
+        if (firstKey == "users") {
+            consumeUserLists(root);
+        } else if (firstKey == "userRelationship") {
+            consumeClientRelations(root[firstKey]);
+        } else if (firstKey == "timeline") {
+            consumeTimeline(root[firstKey]);
+        }
     }
 
     void consumeUserLists(Json::Value root) {
@@ -251,27 +250,23 @@ class SynchronizerRabbitMQ {
         }
         // Check if relations is empty
         if (relations.empty()) {
-            // std::cerr << "Client relations are empty. Skipping publish." << std::endl;
             return;
         }
         Json::Value root;
         root["userRelationship"] = relations;
         Json::StreamWriterBuilder writer;
         std::string message = Json::writeString(writer, root);
-        // std::string queueName = "synch" + std::to_string(synchID) + "_clients_relations_queue";
-        // publishMessage(queueName, message);
         for (int i = 1; i <= total_number_of_registered_synchronizers; i++) {
             if (i == synchID) {
                 continue;
             }
             std::string queueName = "synch" + std::to_string(i) + "_users_queue";
-             auto messageQueuePair = std::make_pair(queueName, message);
+            auto messageQueuePair = std::make_pair(queueName, message);
 
             // Check if the pair already exists in the set
             if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
-                publishMessage(queueName, message); // Publish the message
-                publishedMessages.insert(messageQueuePair); // Add to the set
-                std::cerr << "Published to " << queueName << ": " << message << std::endl;
+                publishMessage(queueName, message);          // Publish the message
+                publishedMessages.insert(messageQueuePair);  // Add to the set
             }
         }
     }
@@ -308,35 +303,37 @@ class SynchronizerRabbitMQ {
             if (client_cluster != clusterID) {
                 continue;
             }
-            std::vector<std::string> timeline = get_tl_or_fl(synchID, clientId, true);
-            if (timeline.size() == 0) {
-                continue;
-            }
+
             // std::vector<std::string> followers = getFollowersOfUser(clientId);
             std::vector<std::string> followers = get_tl_or_fl(synchID, clientId, false);
             for (const auto &follower : followers) {
                 // Convert follower to integer
                 int followerId = std::stoi(follower);
-
+                std::vector<std::string> timeline = get_tl_or_fl(synchID, followerId, true);
+                if (timeline.size() == 0) {
+                    continue;
+                }
                 // Serialize the timeline updates into a JSON message
                 std::string message = serializeTimelineToJson(follower, timeline);
 
                 // Determine the message queue for the synchronizer responsible for this follower
                 int follower_cluster = ((followerId - 1) % 3) + 1;
                 std::string queueName = "synch" + std::to_string(follower_cluster) + "_timeline_queue";
-                std::string slaveQueueName = "synch" + std::to_string(follower_cluster + 1) + "_timeline_queue";
+                std::string slaveQueueName = "synch" + std::to_string(follower_cluster + 3) + "_timeline_queue";
 
-                 auto messageQueuePair = std::make_pair(queueName, message);
-                 auto slaveMessageQueuePair = std::make_pair(slaveQueueName, message);
+                auto messageQueuePair = std::make_pair(queueName, message);
+                auto slaveMessageQueuePair = std::make_pair(slaveQueueName, message);
 
                 // Check if the pair already exists in the set
                 if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
-                    publishMessage(queueName, message); // Publish the message
-                    publishedMessages.insert(messageQueuePair); // Add to the set
+                    log(INFO, "Message\t" + message + " inserted into " + queueName);
+                    publishMessage(queueName, message);          // Publish the message
+                    publishedMessages.insert(messageQueuePair);  // Add to the set
                 }
                 if (publishedMessages.find(slaveMessageQueuePair) == publishedMessages.end()) {
-                    publishMessage(slaveQueueName, message); // Publish the message
-                    publishedMessages.insert(slaveMessageQueuePair); // Add to the set
+                    log(INFO, "Message\t" + message + " inserted into " + slaveQueueName);
+                    publishMessage(slaveQueueName, message);          // Publish the message
+                    publishedMessages.insert(slaveMessageQueuePair);  // Add to the set
                 }
             }
         }
@@ -439,9 +436,9 @@ class SynchronizerRabbitMQ {
             std::ofstream outfile(filename, std::ios::app);
             outfile << newUpdate << "\n\n";  // Add a newline after each set of updates
             outfile.close();
-            std::cout << "Appended new update to " << filename << std::endl;
+            std::cout << "Appended new update " << update[2] << " to " << filename << std::endl;
         } else {
-            std::cout << "Update " << newUpdate << " exists in " << filename << std::endl;
+            std::cout << "Update " << update[2] << " exists in " << filename << std::endl;
         }
     }
 
@@ -690,14 +687,19 @@ void Heartbeat(std::string coordinatorIp, std::string coordinatorPort, ServerInf
         }
         if (!confirmation.status() && !firstHeartbeat) {
             isMaster = !isMaster;
+            serverInfo.set_ismaster(!serverInfo.ismaster());
             clusterSubdirectory = std::to_string(getServerId());
+            std::string role = isMaster ? "Master" : "Slave";
+            log(INFO, "Synchronizer " + std::to_string(synchID) + " role has been swapped by coordinator as " + role);
         }
         if (firstHeartbeat) {
             if (!confirmation.status()) {
                 isMaster = !isMaster;
+                serverInfo.set_ismaster(!serverInfo.ismaster());
             }
             clusterSubdirectory = std::to_string(getServerId());
-            log(INFO, "Synchronizer registered successfully with coordinator.");
+            std::string role = isMaster ? "Master" : "Slave";
+            log(INFO, "Synchronizer " + std::to_string(synchID) + " registered successfully with coordinator as " + role);
             firstHeartbeat = false;
         } else {
             log(INFO, "Heartbeat acknowledged");
@@ -748,10 +750,10 @@ std::vector<std::string> get_tl_or_fl(int synchID, int clientID, bool tl) {
     std::string master_fn = "./cluster" + std::to_string(clusterID) + "/1/" + std::to_string(clientID);
     std::string slave_fn = "./cluster" + std::to_string(clusterID) + "/2/" + std::to_string(clientID);
     if (tl) {
-        master_fn.append("_posts.txt");
-        slave_fn.append("_posts.txt");
-        // master_fn.append("_timeline.txt");
-        // slave_fn.append("_timeline.txt");
+        // master_fn.append("_posts.txt");
+        // slave_fn.append("_posts.txt");
+        master_fn.append("_timeline.txt");
+        slave_fn.append("_timeline.txt");
     } else {
         master_fn.append("_followers.txt");
         slave_fn.append("_followers.txt");

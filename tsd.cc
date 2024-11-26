@@ -236,7 +236,7 @@ class CoordinationService {
         std::string directoryPath = "./cluster" + std::to_string(serverInfo.clusterid()) + "/" + std::to_string(serverInfo.serverid()) + "/";
         try {
             if (!fs::exists(directoryPath) || !fs::is_directory(directoryPath)) {
-                log(INFO, "Directory does not exist or is not a directory: " + directoryPath );
+                log(INFO, "Directory does not exist or is not a directory: " + directoryPath);
                 return;
             }
             // Iterate over the directory and remove each item
@@ -319,7 +319,7 @@ class CoordinationService {
             }
             Client *follower_client = getClient(follower_username);
             bool followerPresent = false;
-            for (Client *followers: client->client_followers) {
+            for (Client *followers : client->client_followers) {
                 if (followers == follower_client) {
                     followerPresent = true;
                     break;
@@ -439,10 +439,10 @@ class SNSServiceImpl final : public SNSService::Service {
         }
         std::sort(users.begin(), users.end());
         std::sort(followers.begin(), followers.end());
-        for (std::string user: users) {
+        for (std::string user : users) {
             list_reply->add_all_users(user);
         }
-        for (std::string follower: followers) {
+        for (std::string follower : followers) {
             list_reply->add_followers(follower);
         }
         log(INFO, "List Successful:\t\tRequested by User " + curr_username);
@@ -574,14 +574,14 @@ class SNSServiceImpl final : public SNSService::Service {
             // Open the original file for reading
             std::ifstream file_in(filename);
             if (!file_in.is_open()) {
-                std::cerr << "Unable to open file: " << filename << std::endl;
+                // std::cerr << "Unable to open file: " << filename << std::endl;
                 return;
             }
 
             // Open a temporary file for writing the updated content
             std::ofstream temp_out(filename + ".tmp");
             if (!temp_out.is_open()) {
-                std::cerr << "Unable to open temp file for writing." << std::endl;
+                // std::cerr << "Unable to open temp file for writing." << std::endl;
                 return;
             }
 
@@ -682,6 +682,10 @@ class SNSServiceImpl final : public SNSService::Service {
         std::ifstream file_in(file_path);
         std::vector<Post> posts;
         std::string line;
+        if (start_line % 4 != 0) {
+            log(WARNING, "Misaligned start_line: " + std::to_string(start_line) + ". Adjusting to the nearest valid start.");
+            start_line -= (start_line % 4);  // Align to the nearest valid start
+        }
         int current_line = 0;
         while (current_line < start_line && std::getline(file_in, line)) {
             current_line++;
@@ -691,6 +695,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
             // Read lines until a blank line (or termination condition) is found
             while (std::getline(file_in, line)) {
+                log(INFO, "Read line: " + line);
                 current_line++;
                 if (line.empty()) {
                     break;  // End of current post
@@ -744,14 +749,14 @@ class SNSServiceImpl final : public SNSService::Service {
         // Open the timeline file for reading
         std::ifstream file_in(timeline_path);
         if (!file_in.is_open()) {
-            std::cerr << "Unable to open timeline file: " << timeline_path << std::endl;
+            // std::cerr << "Unable to open timeline file: " << timeline_path << std::endl;
             return;
         }
 
         // Open a temporary file for writing the updated timeline
         std::ofstream temp_out(timeline_path + ".tmp");
         if (!temp_out.is_open()) {
-            std::cerr << "Unable to open temp file for writing." << std::endl;
+            // std::cerr << "Unable to open temp file for writing." << std::endl;
             return;
         }
 
@@ -799,7 +804,7 @@ class SNSServiceImpl final : public SNSService::Service {
         ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
 
         if (ss.fail()) {
-            std::cerr << "Failed to parse the timestamp: " << datetime_str << std::endl;
+            // std::cerr << "Failed to parse the timestamp: " << datetime_str << std::endl;
             return -1;
         }
 
@@ -808,7 +813,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
         // Check if mktime failed
         if (time_since_epoch == -1) {
-            std::cerr << "Failed to convert time to timestamp." << std::endl;
+            // std::cerr << "Failed to convert time to timestamp." << std::endl;
             return -1;
         }
 
@@ -857,7 +862,7 @@ class SNSServiceImpl final : public SNSService::Service {
     }
 
     // Helper method that uses the ServerReaderWriter stream of client, and Client, to get Timeline Posts, sort by timestamp and write them to client
-    void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user,std::unordered_map<std::string, int> &lastProcessedLine) {
+    void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user, std::unordered_map<std::string, int> &lastProcessedLine) {
         std::string timeline_path = coordinationService->filePrefix(user->username) + "_timeline.txt";
         std::vector<Post> posts = parseFileContentForPosts(timeline_path);
         // boolean compare method to sort by larger timestamp
@@ -880,14 +885,14 @@ class SNSServiceImpl final : public SNSService::Service {
             stream->Write(msg);
         }
         log(INFO, "GetTimeline Successful:\tUser " + user->username + " has " + std::to_string(posts_size) + " posts");
-        lastProcessedLine[user->username] = posts_size;
+        lastProcessedLine[user->username] = posts_size * 4;
     }
 
     void monitorTimelineUpdates(Client *user, ServerReaderWriter<Message, Message> *stream, std::unordered_map<std::string, int> &lastProcessedLine) {
         std::string timelineFile = coordinationService->filePrefix(user->username) + "_timeline.txt";
         log(INFO, "Started monitoring updates for User " + user->username)
         while (user->connected) {
-            std::this_thread::sleep_for(std::chrono::seconds(10)); // Wait for 5 seconds
+            std::this_thread::sleep_for(std::chrono::seconds(10));  // Wait for 5 seconds
 
             int start_line = lastProcessedLine[user->username];
             std::vector<Post> newPosts = parseFileContentForPosts(timelineFile, start_line);
@@ -901,11 +906,9 @@ class SNSServiceImpl final : public SNSService::Service {
                 stream->Write(msg);
                 log(INFO, "Sent new post to User " + user->username + ": " + post.content);
             }
-
             // Update the last processed line count
-            lastProcessedLine[user->username] += newPosts.size() * 4; // Each post has 3 lines + 1 blank line
+            lastProcessedLine[user->username] += newPosts.size() * 4;  // Each post has 3 lines + 1 blank line
         }
-
         log(INFO, "Stopped monitoring updates for User " + user->username);
     }
 
@@ -940,9 +943,9 @@ class SNSServiceImpl final : public SNSService::Service {
                 displayTimeline(stream, user, lastProcessedLine);
 
                 // Spawn a thread to monitor timeline updates
-                std::thread monitorThread([this, user, stream, &lastProcessedLine]() {this->monitorTimelineUpdates(user, stream, lastProcessedLine);});
+                std::thread monitorThread([this, user, stream, &lastProcessedLine]() { this->monitorTimelineUpdates(user, stream, lastProcessedLine); });
 
-                monitorThread.detach(); // Detach the thread to allow it to run independently
+                monitorThread.detach();  // Detach the thread to allow it to run independently
 
                 user->isInitialTimelineRequest = false;
             } else {
@@ -952,7 +955,7 @@ class SNSServiceImpl final : public SNSService::Service {
             }
         }
 
-        user->connected = false; // Mark the user as disconnected
+        user->connected = false;  // Mark the user as disconnected
         return Status::OK;
     }
 };
