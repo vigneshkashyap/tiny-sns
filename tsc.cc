@@ -10,16 +10,16 @@
 #include <vector>
 
 #include "client.h"
-#include "sns.grpc.pb.h"
 #include "coordinator.grpc.pb.h"
+#include "sns.grpc.pb.h"
+using csce662::CoordService;
+using csce662::ID;
 using csce662::ListReply;
 using csce662::Message;
 using csce662::Reply;
 using csce662::Request;
-using csce662::SNSService;
-using csce662::ID;
 using csce662::ServerInfo;
-using csce662::CoordService;
+using csce662::SNSService;
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -83,30 +83,28 @@ int Client::connectTo() {
     // Make a connection with coordinator and get the
     ServerInfo serverInfo;
     ClientContext context;
-    // Request request;
-    // request.set_username(username);
     ID id;
     id.set_id(std::stoi(username));
+    // std::cout<<"Stub with coord";
     grpc::Status status = stub_coordinator->GetServer(&context, id, &serverInfo);
-    // ire.grpc_status = status;
-    // grpc::StatusCode status_code = status.error_code();
-    std::cout<<"Created Coordinator Stub";
+    // std::cout<<"coord responded";
     if (!status.ok()) {
+        // std::cout<<"coord responded with error";
         // grpc::StatusCode status_code = status.error_code();
         // if (status_code == grpc::StatusCode::ALREADY_EXISTS) {
         //     ire.comm_status = FAILURE_INVALID_USERNAME;
         // } else {
         //     ire.comm_status = FAILURE_INVALID;
-        // }
-        std::cout<<"We got some error";
+        return -1;
     }
     hostname = serverInfo.hostname();
     port = serverInfo.port();
-    // std::shared_ptr<::grpc::ChannelInterface> channel = grpc::CreateChannel(serverInfo + port, grpc::InsecureChannelCredentials());
+    // std::cout<<"Stub creating";
     stub_ = SNSService::NewStub(grpc::CreateChannel(hostname + ":" + port, grpc::InsecureChannelCredentials()));
+    // std::cout<<"Stub created";
     IReply ire = Login();
     if (!ire.grpc_status.ok()) {
-      return -1;
+        return -1;
     }
     return 1;
 }
@@ -126,8 +124,15 @@ IReply Client::processCommand(std::string& input) {
     } else if (command.compare("LIST") == 0) {
         ire = List();
     } else if (command.compare("TIMELINE") == 0) {
-        ire.grpc_status = Status::OK;
-        ire.comm_status = SUCCESS;
+        ire = List();
+        // if (!ire.grpc_status.ok()) {
+        //     ire.comm_status = FAILURE_UNKNOWN;
+        //     return ire;
+        // }
+        // ire.comm_status = SUCCESS;
+        return ire;
+        // ire.grpc_status = Status::OK;
+        // ire.comm_status = SUCCESS;
     }
     return ire;
 }

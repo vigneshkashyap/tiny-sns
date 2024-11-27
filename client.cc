@@ -1,9 +1,9 @@
 #include "client.h"
 
 void IClient::run() {
-  int ret = connectTo();
-  if (ret < 0) {
-    std::cout << "connection failed: " << ret << std::endl;
+    int ret = connectTo();
+    if (ret < 0) {
+        std::cout << "connection failed: " << ret << std::endl;
         exit(1);
     }
     displayTitle();
@@ -62,12 +62,18 @@ void IClient::displayCommandReply(const std::string& comm, const IReply& reply) 
                 std::cout << "Command completed successfully\n";
                 if (comm == "LIST") {
                     std::cout << "All users: ";
-                    for (std::string room : reply.all_users) {
-                        std::cout << room << ", ";
+                    for (size_t i = 0; i < reply.all_users.size(); ++i) {
+                        std::cout << reply.all_users[i];
+                        if (i < reply.all_users.size() - 1) {
+                            std::cout << ", ";  // Add a comma only if it's not the last element
+                        }
                     }
                     std::cout << "\nFollowers: ";
-                    for (std::string room : reply.followers) {
-                        std::cout << room << ", ";
+                    for (size_t i = 0; i < reply.followers.size(); ++i) {
+                        std::cout << reply.followers[i];
+                        if (i < reply.followers.size() - 1) {
+                            std::cout << ", ";  // Add a comma only if it's not the last element
+                        }
                     }
                     std::cout << std::endl;
                 }
@@ -95,7 +101,7 @@ void IClient::displayCommandReply(const std::string& comm, const IReply& reply) 
                 break;
         }
     } else {
-        std::cout << "grpc failed: " << reply.grpc_status.error_message() << std::endl;
+        std::cout << "Command Failed" << std::endl;
     }
 }
 

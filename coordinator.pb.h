@@ -52,48 +52,43 @@ struct TableStruct_coordinator_2eproto {
 extern const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable
     descriptor_table_coordinator_2eproto;
 namespace csce662 {
+class AllUsers;
+struct AllUsersDefaultTypeInternal;
+extern AllUsersDefaultTypeInternal _AllUsers_default_instance_;
 class Confirmation;
 struct ConfirmationDefaultTypeInternal;
 extern ConfirmationDefaultTypeInternal _Confirmation_default_instance_;
 class ID;
 struct IDDefaultTypeInternal;
 extern IDDefaultTypeInternal _ID_default_instance_;
-class Path;
-struct PathDefaultTypeInternal;
-extern PathDefaultTypeInternal _Path_default_instance_;
-class PathAndData;
-struct PathAndDataDefaultTypeInternal;
-extern PathAndDataDefaultTypeInternal _PathAndData_default_instance_;
 class ServerInfo;
 struct ServerInfoDefaultTypeInternal;
 extern ServerInfoDefaultTypeInternal _ServerInfo_default_instance_;
 class ServerList;
 struct ServerListDefaultTypeInternal;
 extern ServerListDefaultTypeInternal _ServerList_default_instance_;
-class Status;
-struct StatusDefaultTypeInternal;
-extern StatusDefaultTypeInternal _Status_default_instance_;
-class SynchService;
-struct SynchServiceDefaultTypeInternal;
-extern SynchServiceDefaultTypeInternal _SynchService_default_instance_;
+class SynchronizerListReply;
+struct SynchronizerListReplyDefaultTypeInternal;
+extern SynchronizerListReplyDefaultTypeInternal _SynchronizerListReply_default_instance_;
+class TLFL;
+struct TLFLDefaultTypeInternal;
+extern TLFLDefaultTypeInternal _TLFL_default_instance_;
 }  // namespace csce662
 PROTOBUF_NAMESPACE_OPEN
+template <>
+::csce662::AllUsers* Arena::CreateMaybeMessage<::csce662::AllUsers>(Arena*);
 template <>
 ::csce662::Confirmation* Arena::CreateMaybeMessage<::csce662::Confirmation>(Arena*);
 template <>
 ::csce662::ID* Arena::CreateMaybeMessage<::csce662::ID>(Arena*);
 template <>
-::csce662::Path* Arena::CreateMaybeMessage<::csce662::Path>(Arena*);
-template <>
-::csce662::PathAndData* Arena::CreateMaybeMessage<::csce662::PathAndData>(Arena*);
-template <>
 ::csce662::ServerInfo* Arena::CreateMaybeMessage<::csce662::ServerInfo>(Arena*);
 template <>
 ::csce662::ServerList* Arena::CreateMaybeMessage<::csce662::ServerList>(Arena*);
 template <>
-::csce662::Status* Arena::CreateMaybeMessage<::csce662::Status>(Arena*);
+::csce662::SynchronizerListReply* Arena::CreateMaybeMessage<::csce662::SynchronizerListReply>(Arena*);
 template <>
-::csce662::SynchService* Arena::CreateMaybeMessage<::csce662::SynchService>(Arena*);
+::csce662::TLFL* Arena::CreateMaybeMessage<::csce662::TLFL>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 
 namespace csce662 {
@@ -236,6 +231,7 @@ class ServerInfo final :
     kTypeFieldNumber = 4,
     kServerIDFieldNumber = 1,
     kClusterIDFieldNumber = 5,
+    kIsMasterFieldNumber = 6,
   };
   // string hostname = 2;
   void clear_hostname() ;
@@ -317,6 +313,16 @@ class ServerInfo final :
   void _internal_set_clusterid(::int32_t value);
 
   public:
+  // bool isMaster = 6;
+  void clear_ismaster() ;
+  bool ismaster() const;
+  void set_ismaster(bool value);
+
+  private:
+  bool _internal_ismaster() const;
+  void _internal_set_ismaster(bool value);
+
+  public:
   // @@protoc_insertion_point(class_scope:csce662.ServerInfo)
  private:
   class _Internal;
@@ -330,6 +336,7 @@ class ServerInfo final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
     ::int32_t serverid_;
     ::int32_t clusterid_;
+    bool ismaster_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -465,6 +472,7 @@ class Confirmation final :
 
   enum : int {
     kStatusFieldNumber = 1,
+    kReconnectFieldNumber = 2,
   };
   // bool status = 1;
   void clear_status() ;
@@ -476,6 +484,16 @@ class Confirmation final :
   void _internal_set_status(bool value);
 
   public:
+  // bool reconnect = 2;
+  void clear_reconnect() ;
+  bool reconnect() const;
+  void set_reconnect(bool value);
+
+  private:
+  bool _internal_reconnect() const;
+  void _internal_set_reconnect(bool value);
+
+  public:
   // @@protoc_insertion_point(class_scope:csce662.Confirmation)
  private:
   class _Internal;
@@ -485,6 +503,7 @@ class Confirmation final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     bool status_;
+    bool reconnect_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -646,6 +665,607 @@ class ID final :
   friend struct ::TableStruct_coordinator_2eproto;
 };// -------------------------------------------------------------------
 
+class TLFL final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.TLFL) */ {
+ public:
+  inline TLFL() : TLFL(nullptr) {}
+  ~TLFL() override;
+  template<typename = void>
+  explicit PROTOBUF_CONSTEXPR TLFL(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  TLFL(const TLFL& from);
+  TLFL(TLFL&& from) noexcept
+    : TLFL() {
+    *this = ::std::move(from);
+  }
+
+  inline TLFL& operator=(const TLFL& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline TLFL& operator=(TLFL&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
+    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
+  }
+  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
+    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const TLFL& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const TLFL* internal_default_instance() {
+    return reinterpret_cast<const TLFL*>(
+               &_TLFL_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    3;
+
+  friend void swap(TLFL& a, TLFL& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(TLFL* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(TLFL* other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  TLFL* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<TLFL>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const TLFL& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const TLFL& from) {
+    TLFL::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  ::size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::uint8_t* _InternalSerialize(
+      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(TLFL* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::absl::string_view FullMessageName() {
+    return "csce662.TLFL";
+  }
+  protected:
+  explicit TLFL(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kTLFieldNumber = 2,
+    kFLFieldNumber = 3,
+    kStatusFieldNumber = 1,
+  };
+  // repeated string TL = 2;
+  int tl_size() const;
+  private:
+  int _internal_tl_size() const;
+
+  public:
+  void clear_tl() ;
+  const std::string& tl(int index) const;
+  std::string* mutable_tl(int index);
+  void set_tl(int index, const std::string& value);
+  void set_tl(int index, std::string&& value);
+  void set_tl(int index, const char* value);
+  void set_tl(int index, const char* value, std::size_t size);
+  void set_tl(int index, absl::string_view value);
+  std::string* add_tl();
+  void add_tl(const std::string& value);
+  void add_tl(std::string&& value);
+  void add_tl(const char* value);
+  void add_tl(const char* value, std::size_t size);
+  void add_tl(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& tl() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_tl();
+
+  private:
+  const std::string& _internal_tl(int index) const;
+  std::string* _internal_add_tl();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_tl() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_tl();
+
+  public:
+  // repeated string FL = 3;
+  int fl_size() const;
+  private:
+  int _internal_fl_size() const;
+
+  public:
+  void clear_fl() ;
+  const std::string& fl(int index) const;
+  std::string* mutable_fl(int index);
+  void set_fl(int index, const std::string& value);
+  void set_fl(int index, std::string&& value);
+  void set_fl(int index, const char* value);
+  void set_fl(int index, const char* value, std::size_t size);
+  void set_fl(int index, absl::string_view value);
+  std::string* add_fl();
+  void add_fl(const std::string& value);
+  void add_fl(std::string&& value);
+  void add_fl(const char* value);
+  void add_fl(const char* value, std::size_t size);
+  void add_fl(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& fl() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_fl();
+
+  private:
+  const std::string& _internal_fl(int index) const;
+  std::string* _internal_add_fl();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_fl() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_fl();
+
+  public:
+  // bool status = 1;
+  void clear_status() ;
+  bool status() const;
+  void set_status(bool value);
+
+  private:
+  bool _internal_status() const;
+  void _internal_set_status(bool value);
+
+  public:
+  // @@protoc_insertion_point(class_scope:csce662.TLFL)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> tl_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> fl_;
+    bool status_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_coordinator_2eproto;
+};// -------------------------------------------------------------------
+
+class AllUsers final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.AllUsers) */ {
+ public:
+  inline AllUsers() : AllUsers(nullptr) {}
+  ~AllUsers() override;
+  template<typename = void>
+  explicit PROTOBUF_CONSTEXPR AllUsers(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  AllUsers(const AllUsers& from);
+  AllUsers(AllUsers&& from) noexcept
+    : AllUsers() {
+    *this = ::std::move(from);
+  }
+
+  inline AllUsers& operator=(const AllUsers& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline AllUsers& operator=(AllUsers&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
+    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
+  }
+  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
+    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const AllUsers& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const AllUsers* internal_default_instance() {
+    return reinterpret_cast<const AllUsers*>(
+               &_AllUsers_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    4;
+
+  friend void swap(AllUsers& a, AllUsers& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(AllUsers* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(AllUsers* other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  AllUsers* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<AllUsers>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const AllUsers& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const AllUsers& from) {
+    AllUsers::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  ::size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::uint8_t* _InternalSerialize(
+      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(AllUsers* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::absl::string_view FullMessageName() {
+    return "csce662.AllUsers";
+  }
+  protected:
+  explicit AllUsers(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kUsersFieldNumber = 1,
+  };
+  // repeated string users = 1;
+  int users_size() const;
+  private:
+  int _internal_users_size() const;
+
+  public:
+  void clear_users() ;
+  const std::string& users(int index) const;
+  std::string* mutable_users(int index);
+  void set_users(int index, const std::string& value);
+  void set_users(int index, std::string&& value);
+  void set_users(int index, const char* value);
+  void set_users(int index, const char* value, std::size_t size);
+  void set_users(int index, absl::string_view value);
+  std::string* add_users();
+  void add_users(const std::string& value);
+  void add_users(std::string&& value);
+  void add_users(const char* value);
+  void add_users(const char* value, std::size_t size);
+  void add_users(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& users() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_users();
+
+  private:
+  const std::string& _internal_users(int index) const;
+  std::string* _internal_add_users();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_users() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_users();
+
+  public:
+  // @@protoc_insertion_point(class_scope:csce662.AllUsers)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> users_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_coordinator_2eproto;
+};// -------------------------------------------------------------------
+
+class SynchronizerListReply final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.SynchronizerListReply) */ {
+ public:
+  inline SynchronizerListReply() : SynchronizerListReply(nullptr) {}
+  ~SynchronizerListReply() override;
+  template<typename = void>
+  explicit PROTOBUF_CONSTEXPR SynchronizerListReply(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  SynchronizerListReply(const SynchronizerListReply& from);
+  SynchronizerListReply(SynchronizerListReply&& from) noexcept
+    : SynchronizerListReply() {
+    *this = ::std::move(from);
+  }
+
+  inline SynchronizerListReply& operator=(const SynchronizerListReply& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline SynchronizerListReply& operator=(SynchronizerListReply&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
+    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
+  }
+  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
+    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const SynchronizerListReply& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const SynchronizerListReply* internal_default_instance() {
+    return reinterpret_cast<const SynchronizerListReply*>(
+               &_SynchronizerListReply_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    5;
+
+  friend void swap(SynchronizerListReply& a, SynchronizerListReply& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(SynchronizerListReply* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(SynchronizerListReply* other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  SynchronizerListReply* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<SynchronizerListReply>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const SynchronizerListReply& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const SynchronizerListReply& from) {
+    SynchronizerListReply::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  ::size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::uint8_t* _InternalSerialize(
+      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(SynchronizerListReply* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::absl::string_view FullMessageName() {
+    return "csce662.SynchronizerListReply";
+  }
+  protected:
+  explicit SynchronizerListReply(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kAllUsersFieldNumber = 1,
+    kFollowersFieldNumber = 2,
+  };
+  // repeated string all_users = 1;
+  int all_users_size() const;
+  private:
+  int _internal_all_users_size() const;
+
+  public:
+  void clear_all_users() ;
+  const std::string& all_users(int index) const;
+  std::string* mutable_all_users(int index);
+  void set_all_users(int index, const std::string& value);
+  void set_all_users(int index, std::string&& value);
+  void set_all_users(int index, const char* value);
+  void set_all_users(int index, const char* value, std::size_t size);
+  void set_all_users(int index, absl::string_view value);
+  std::string* add_all_users();
+  void add_all_users(const std::string& value);
+  void add_all_users(std::string&& value);
+  void add_all_users(const char* value);
+  void add_all_users(const char* value, std::size_t size);
+  void add_all_users(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& all_users() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_all_users();
+
+  private:
+  const std::string& _internal_all_users(int index) const;
+  std::string* _internal_add_all_users();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_all_users() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_all_users();
+
+  public:
+  // repeated string followers = 2;
+  int followers_size() const;
+  private:
+  int _internal_followers_size() const;
+
+  public:
+  void clear_followers() ;
+  const std::string& followers(int index) const;
+  std::string* mutable_followers(int index);
+  void set_followers(int index, const std::string& value);
+  void set_followers(int index, std::string&& value);
+  void set_followers(int index, const char* value);
+  void set_followers(int index, const char* value, std::size_t size);
+  void set_followers(int index, absl::string_view value);
+  std::string* add_followers();
+  void add_followers(const std::string& value);
+  void add_followers(std::string&& value);
+  void add_followers(const char* value);
+  void add_followers(const char* value, std::size_t size);
+  void add_followers(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& followers() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_followers();
+
+  private:
+  const std::string& _internal_followers(int index) const;
+  std::string* _internal_add_followers();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_followers() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_followers();
+
+  public:
+  // @@protoc_insertion_point(class_scope:csce662.SynchronizerListReply)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> all_users_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> followers_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_coordinator_2eproto;
+};// -------------------------------------------------------------------
+
 class ServerList final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.ServerList) */ {
  public:
@@ -702,7 +1322,7 @@ class ServerList final :
                &_ServerList_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    3;
+    6;
 
   friend void swap(ServerList& a, ServerList& b) {
     a.Swap(&b);
@@ -774,36 +1394,119 @@ class ServerList final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kServerListFieldNumber = 1,
+    kServerIDFieldNumber = 1,
+    kHostnameFieldNumber = 2,
+    kPortFieldNumber = 3,
+    kTypeFieldNumber = 4,
   };
-  // repeated string serverList = 1;
-  int serverlist_size() const;
+  // repeated int32 serverID = 1;
+  int serverid_size() const;
   private:
-  int _internal_serverlist_size() const;
+  int _internal_serverid_size() const;
 
   public:
-  void clear_serverlist() ;
-  const std::string& serverlist(int index) const;
-  std::string* mutable_serverlist(int index);
-  void set_serverlist(int index, const std::string& value);
-  void set_serverlist(int index, std::string&& value);
-  void set_serverlist(int index, const char* value);
-  void set_serverlist(int index, const char* value, std::size_t size);
-  void set_serverlist(int index, absl::string_view value);
-  std::string* add_serverlist();
-  void add_serverlist(const std::string& value);
-  void add_serverlist(std::string&& value);
-  void add_serverlist(const char* value);
-  void add_serverlist(const char* value, std::size_t size);
-  void add_serverlist(absl::string_view value);
-  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& serverlist() const;
-  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_serverlist();
+  void clear_serverid() ;
+  ::int32_t serverid(int index) const;
+  void set_serverid(int index, ::int32_t value);
+  void add_serverid(::int32_t value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>& serverid() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>* mutable_serverid();
 
   private:
-  const std::string& _internal_serverlist(int index) const;
-  std::string* _internal_add_serverlist();
-  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_serverlist() const;
-  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_serverlist();
+  ::int32_t _internal_serverid(int index) const;
+  void _internal_add_serverid(::int32_t value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>& _internal_serverid() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>* _internal_mutable_serverid();
+
+  public:
+  // repeated string hostname = 2;
+  int hostname_size() const;
+  private:
+  int _internal_hostname_size() const;
+
+  public:
+  void clear_hostname() ;
+  const std::string& hostname(int index) const;
+  std::string* mutable_hostname(int index);
+  void set_hostname(int index, const std::string& value);
+  void set_hostname(int index, std::string&& value);
+  void set_hostname(int index, const char* value);
+  void set_hostname(int index, const char* value, std::size_t size);
+  void set_hostname(int index, absl::string_view value);
+  std::string* add_hostname();
+  void add_hostname(const std::string& value);
+  void add_hostname(std::string&& value);
+  void add_hostname(const char* value);
+  void add_hostname(const char* value, std::size_t size);
+  void add_hostname(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& hostname() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_hostname();
+
+  private:
+  const std::string& _internal_hostname(int index) const;
+  std::string* _internal_add_hostname();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_hostname() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_hostname();
+
+  public:
+  // repeated string port = 3;
+  int port_size() const;
+  private:
+  int _internal_port_size() const;
+
+  public:
+  void clear_port() ;
+  const std::string& port(int index) const;
+  std::string* mutable_port(int index);
+  void set_port(int index, const std::string& value);
+  void set_port(int index, std::string&& value);
+  void set_port(int index, const char* value);
+  void set_port(int index, const char* value, std::size_t size);
+  void set_port(int index, absl::string_view value);
+  std::string* add_port();
+  void add_port(const std::string& value);
+  void add_port(std::string&& value);
+  void add_port(const char* value);
+  void add_port(const char* value, std::size_t size);
+  void add_port(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& port() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_port();
+
+  private:
+  const std::string& _internal_port(int index) const;
+  std::string* _internal_add_port();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_port() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_port();
+
+  public:
+  // repeated string type = 4;
+  int type_size() const;
+  private:
+  int _internal_type_size() const;
+
+  public:
+  void clear_type() ;
+  const std::string& type(int index) const;
+  std::string* mutable_type(int index);
+  void set_type(int index, const std::string& value);
+  void set_type(int index, std::string&& value);
+  void set_type(int index, const char* value);
+  void set_type(int index, const char* value, std::size_t size);
+  void set_type(int index, absl::string_view value);
+  std::string* add_type();
+  void add_type(const std::string& value);
+  void add_type(std::string&& value);
+  void add_type(const char* value);
+  void add_type(const char* value, std::size_t size);
+  void add_type(absl::string_view value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& type() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_type();
+
+  private:
+  const std::string& _internal_type(int index) const;
+  std::string* _internal_add_type();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& _internal_type() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* _internal_mutable_type();
 
   public:
   // @@protoc_insertion_point(class_scope:csce662.ServerList)
@@ -814,679 +1517,11 @@ class ServerList final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> serverlist_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_coordinator_2eproto;
-};// -------------------------------------------------------------------
-
-class SynchService final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.SynchService) */ {
- public:
-  inline SynchService() : SynchService(nullptr) {}
-  ~SynchService() override;
-  template<typename = void>
-  explicit PROTOBUF_CONSTEXPR SynchService(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  SynchService(const SynchService& from);
-  SynchService(SynchService&& from) noexcept
-    : SynchService() {
-    *this = ::std::move(from);
-  }
-
-  inline SynchService& operator=(const SynchService& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline SynchService& operator=(SynchService&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
-  }
-  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const SynchService& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const SynchService* internal_default_instance() {
-    return reinterpret_cast<const SynchService*>(
-               &_SynchService_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    4;
-
-  friend void swap(SynchService& a, SynchService& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(SynchService* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(SynchService* other) {
-    if (other == this) return;
-    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  SynchService* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<SynchService>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const SynchService& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const SynchService& from) {
-    SynchService::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  ::size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  ::uint8_t* _InternalSerialize(
-      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(SynchService* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::absl::string_view FullMessageName() {
-    return "csce662.SynchService";
-  }
-  protected:
-  explicit SynchService(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kTestFieldNumber = 1,
-  };
-  // string test = 1;
-  void clear_test() ;
-  const std::string& test() const;
-
-
-
-
-  template <typename Arg_ = const std::string&, typename... Args_>
-  void set_test(Arg_&& arg, Args_... args);
-  std::string* mutable_test();
-  PROTOBUF_NODISCARD std::string* release_test();
-  void set_allocated_test(std::string* ptr);
-
-  private:
-  const std::string& _internal_test() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_test(
-      const std::string& value);
-  std::string* _internal_mutable_test();
-
-  public:
-  // @@protoc_insertion_point(class_scope:csce662.SynchService)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr test_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_coordinator_2eproto;
-};// -------------------------------------------------------------------
-
-class PathAndData final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.PathAndData) */ {
- public:
-  inline PathAndData() : PathAndData(nullptr) {}
-  ~PathAndData() override;
-  template<typename = void>
-  explicit PROTOBUF_CONSTEXPR PathAndData(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  PathAndData(const PathAndData& from);
-  PathAndData(PathAndData&& from) noexcept
-    : PathAndData() {
-    *this = ::std::move(from);
-  }
-
-  inline PathAndData& operator=(const PathAndData& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline PathAndData& operator=(PathAndData&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
-  }
-  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const PathAndData& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const PathAndData* internal_default_instance() {
-    return reinterpret_cast<const PathAndData*>(
-               &_PathAndData_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    5;
-
-  friend void swap(PathAndData& a, PathAndData& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(PathAndData* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(PathAndData* other) {
-    if (other == this) return;
-    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  PathAndData* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<PathAndData>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const PathAndData& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const PathAndData& from) {
-    PathAndData::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  ::size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  ::uint8_t* _InternalSerialize(
-      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(PathAndData* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::absl::string_view FullMessageName() {
-    return "csce662.PathAndData";
-  }
-  protected:
-  explicit PathAndData(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kPathFieldNumber = 1,
-    kDataFieldNumber = 2,
-  };
-  // string path = 1;
-  void clear_path() ;
-  const std::string& path() const;
-
-
-
-
-  template <typename Arg_ = const std::string&, typename... Args_>
-  void set_path(Arg_&& arg, Args_... args);
-  std::string* mutable_path();
-  PROTOBUF_NODISCARD std::string* release_path();
-  void set_allocated_path(std::string* ptr);
-
-  private:
-  const std::string& _internal_path() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_path(
-      const std::string& value);
-  std::string* _internal_mutable_path();
-
-  public:
-  // string data = 2;
-  void clear_data() ;
-  const std::string& data() const;
-
-
-
-
-  template <typename Arg_ = const std::string&, typename... Args_>
-  void set_data(Arg_&& arg, Args_... args);
-  std::string* mutable_data();
-  PROTOBUF_NODISCARD std::string* release_data();
-  void set_allocated_data(std::string* ptr);
-
-  private:
-  const std::string& _internal_data() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_data(
-      const std::string& value);
-  std::string* _internal_mutable_data();
-
-  public:
-  // @@protoc_insertion_point(class_scope:csce662.PathAndData)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr data_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_coordinator_2eproto;
-};// -------------------------------------------------------------------
-
-class Path final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.Path) */ {
- public:
-  inline Path() : Path(nullptr) {}
-  ~Path() override;
-  template<typename = void>
-  explicit PROTOBUF_CONSTEXPR Path(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  Path(const Path& from);
-  Path(Path&& from) noexcept
-    : Path() {
-    *this = ::std::move(from);
-  }
-
-  inline Path& operator=(const Path& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline Path& operator=(Path&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
-  }
-  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const Path& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const Path* internal_default_instance() {
-    return reinterpret_cast<const Path*>(
-               &_Path_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    6;
-
-  friend void swap(Path& a, Path& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(Path* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(Path* other) {
-    if (other == this) return;
-    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  Path* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<Path>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const Path& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const Path& from) {
-    Path::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  ::size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  ::uint8_t* _InternalSerialize(
-      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(Path* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::absl::string_view FullMessageName() {
-    return "csce662.Path";
-  }
-  protected:
-  explicit Path(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kPathFieldNumber = 1,
-  };
-  // string path = 1;
-  void clear_path() ;
-  const std::string& path() const;
-
-
-
-
-  template <typename Arg_ = const std::string&, typename... Args_>
-  void set_path(Arg_&& arg, Args_... args);
-  std::string* mutable_path();
-  PROTOBUF_NODISCARD std::string* release_path();
-  void set_allocated_path(std::string* ptr);
-
-  private:
-  const std::string& _internal_path() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_path(
-      const std::string& value);
-  std::string* _internal_mutable_path();
-
-  public:
-  // @@protoc_insertion_point(class_scope:csce662.Path)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
-  };
-  union { Impl_ _impl_; };
-  friend struct ::TableStruct_coordinator_2eproto;
-};// -------------------------------------------------------------------
-
-class Status final :
-    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:csce662.Status) */ {
- public:
-  inline Status() : Status(nullptr) {}
-  ~Status() override;
-  template<typename = void>
-  explicit PROTOBUF_CONSTEXPR Status(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  Status(const Status& from);
-  Status(Status&& from) noexcept
-    : Status() {
-    *this = ::std::move(from);
-  }
-
-  inline Status& operator=(const Status& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline Status& operator=(Status&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  inline const ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet& unknown_fields() const {
-    return _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance);
-  }
-  inline ::PROTOBUF_NAMESPACE_ID::UnknownFieldSet* mutable_unknown_fields() {
-    return _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const Status& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const Status* internal_default_instance() {
-    return reinterpret_cast<const Status*>(
-               &_Status_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    7;
-
-  friend void swap(Status& a, Status& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(Status* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(Status* other) {
-    if (other == this) return;
-    ABSL_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  Status* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<Status>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
-  void CopyFrom(const Status& from);
-  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
-  void MergeFrom( const Status& from) {
-    Status::MergeImpl(*this, from);
-  }
-  private:
-  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
-  public:
-  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
-  bool IsInitialized() const final;
-
-  ::size_t ByteSizeLong() const final;
-  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
-  ::uint8_t* _InternalSerialize(
-      ::uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
-  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
-
-  private:
-  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  void SharedDtor();
-  void SetCachedSize(int size) const final;
-  void InternalSwap(Status* other);
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::absl::string_view FullMessageName() {
-    return "csce662.Status";
-  }
-  protected:
-  explicit Status(::PROTOBUF_NAMESPACE_ID::Arena* arena);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  enum : int {
-    kStatusFieldNumber = 1,
-  };
-  // bool status = 1;
-  void clear_status() ;
-  bool status() const;
-  void set_status(bool value);
-
-  private:
-  bool _internal_status() const;
-  void _internal_set_status(bool value);
-
-  public:
-  // @@protoc_insertion_point(class_scope:csce662.Status)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-    bool status_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t> serverid_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _serverid_cached_byte_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> hostname_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> port_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> type_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -1690,6 +1725,26 @@ inline void ServerInfo::_internal_set_clusterid(::int32_t value) {
   _impl_.clusterid_ = value;
 }
 
+// bool isMaster = 6;
+inline void ServerInfo::clear_ismaster() {
+  _impl_.ismaster_ = false;
+}
+inline bool ServerInfo::ismaster() const {
+  // @@protoc_insertion_point(field_get:csce662.ServerInfo.isMaster)
+  return _internal_ismaster();
+}
+inline void ServerInfo::set_ismaster(bool value) {
+  _internal_set_ismaster(value);
+  // @@protoc_insertion_point(field_set:csce662.ServerInfo.isMaster)
+}
+inline bool ServerInfo::_internal_ismaster() const {
+  return _impl_.ismaster_;
+}
+inline void ServerInfo::_internal_set_ismaster(bool value) {
+  ;
+  _impl_.ismaster_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // Confirmation
@@ -1712,6 +1767,26 @@ inline bool Confirmation::_internal_status() const {
 inline void Confirmation::_internal_set_status(bool value) {
   ;
   _impl_.status_ = value;
+}
+
+// bool reconnect = 2;
+inline void Confirmation::clear_reconnect() {
+  _impl_.reconnect_ = false;
+}
+inline bool Confirmation::reconnect() const {
+  // @@protoc_insertion_point(field_get:csce662.Confirmation.reconnect)
+  return _internal_reconnect();
+}
+inline void Confirmation::set_reconnect(bool value) {
+  _internal_set_reconnect(value);
+  // @@protoc_insertion_point(field_set:csce662.Confirmation.reconnect)
+}
+inline bool Confirmation::_internal_reconnect() const {
+  return _impl_.reconnect_;
+}
+inline void Confirmation::_internal_set_reconnect(bool value) {
+  ;
+  _impl_.reconnect_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -1740,323 +1815,826 @@ inline void ID::_internal_set_id(::int32_t value) {
 
 // -------------------------------------------------------------------
 
-// ServerList
-
-// repeated string serverList = 1;
-inline int ServerList::_internal_serverlist_size() const {
-  return _impl_.serverlist_.size();
-}
-inline int ServerList::serverlist_size() const {
-  return _internal_serverlist_size();
-}
-inline void ServerList::clear_serverlist() {
-  _internal_mutable_serverlist()->Clear();
-}
-inline std::string* ServerList::add_serverlist() {
-  std::string* _s = _internal_add_serverlist();
-  // @@protoc_insertion_point(field_add_mutable:csce662.ServerList.serverList)
-  return _s;
-}
-inline const std::string& ServerList::serverlist(int index) const {
-  // @@protoc_insertion_point(field_get:csce662.ServerList.serverList)
-  return _internal_serverlist(index);
-}
-inline std::string* ServerList::mutable_serverlist(int index) {
-  // @@protoc_insertion_point(field_mutable:csce662.ServerList.serverList)
-  return _internal_mutable_serverlist()->Mutable(index);
-}
-inline void ServerList::set_serverlist(int index, const std::string& value) {
-  _internal_mutable_serverlist()->Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set:csce662.ServerList.serverList)
-}
-inline void ServerList::set_serverlist(int index, std::string&& value) {
-  _internal_mutable_serverlist()->Mutable(index)->assign(std::move(value));
-  // @@protoc_insertion_point(field_set:csce662.ServerList.serverList)
-}
-inline void ServerList::set_serverlist(int index, const char* value) {
-  ABSL_DCHECK(value != nullptr);
-  _internal_mutable_serverlist()->Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set_char:csce662.ServerList.serverList)
-}
-inline void ServerList::set_serverlist(int index, const char* value,
-                              std::size_t size) {
-  _internal_mutable_serverlist()->Mutable(index)->assign(
-      reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:csce662.ServerList.serverList)
-}
-inline void ServerList::set_serverlist(int index, absl::string_view value) {
-  _internal_mutable_serverlist()->Mutable(index)->assign(value.data(),
-                                                     value.size());
-  // @@protoc_insertion_point(field_set_string_piece:csce662.ServerList.serverList)
-}
-inline void ServerList::add_serverlist(const std::string& value) {
-  _internal_mutable_serverlist()->Add()->assign(value);
-  // @@protoc_insertion_point(field_add:csce662.ServerList.serverList)
-}
-inline void ServerList::add_serverlist(std::string&& value) {
-  _internal_mutable_serverlist()->Add(std::move(value));
-  // @@protoc_insertion_point(field_add:csce662.ServerList.serverList)
-}
-inline void ServerList::add_serverlist(const char* value) {
-  ABSL_DCHECK(value != nullptr);
-  _internal_mutable_serverlist()->Add()->assign(value);
-  // @@protoc_insertion_point(field_add_char:csce662.ServerList.serverList)
-}
-inline void ServerList::add_serverlist(const char* value, std::size_t size) {
-  _internal_mutable_serverlist()->Add()->assign(
-      reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_add_pointer:csce662.ServerList.serverList)
-}
-inline void ServerList::add_serverlist(absl::string_view value) {
-  _internal_mutable_serverlist()->Add()->assign(value.data(), value.size());
-  // @@protoc_insertion_point(field_add_string_piece:csce662.ServerList.serverList)
-}
-inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
-ServerList::serverlist() const {
-  // @@protoc_insertion_point(field_list:csce662.ServerList.serverList)
-  return _internal_serverlist();
-}
-inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* ServerList::mutable_serverlist() {
-  // @@protoc_insertion_point(field_mutable_list:csce662.ServerList.serverList)
-  return _internal_mutable_serverlist();
-}
-inline const std::string& ServerList::_internal_serverlist(int index) const {
-  return _internal_serverlist().Get(index);
-}
-inline std::string* ServerList::_internal_add_serverlist() {
-  return _internal_mutable_serverlist()->Add();
-}
-inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
-ServerList::_internal_serverlist() const {
-  return _impl_.serverlist_;
-}
-inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
-ServerList::_internal_mutable_serverlist() {
-  return &_impl_.serverlist_;
-}
-
-// -------------------------------------------------------------------
-
-// SynchService
-
-// string test = 1;
-inline void SynchService::clear_test() {
-  _impl_.test_.ClearToEmpty();
-}
-inline const std::string& SynchService::test() const {
-  // @@protoc_insertion_point(field_get:csce662.SynchService.test)
-  return _internal_test();
-}
-template <typename Arg_, typename... Args_>
-inline PROTOBUF_ALWAYS_INLINE void SynchService::set_test(Arg_&& arg,
-                                                     Args_... args) {
-  ;
-  _impl_.test_.Set(static_cast<Arg_&&>(arg), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:csce662.SynchService.test)
-}
-inline std::string* SynchService::mutable_test() {
-  std::string* _s = _internal_mutable_test();
-  // @@protoc_insertion_point(field_mutable:csce662.SynchService.test)
-  return _s;
-}
-inline const std::string& SynchService::_internal_test() const {
-  return _impl_.test_.Get();
-}
-inline void SynchService::_internal_set_test(const std::string& value) {
-  ;
-
-
-  _impl_.test_.Set(value, GetArenaForAllocation());
-}
-inline std::string* SynchService::_internal_mutable_test() {
-  ;
-  return _impl_.test_.Mutable( GetArenaForAllocation());
-}
-inline std::string* SynchService::release_test() {
-  // @@protoc_insertion_point(field_release:csce662.SynchService.test)
-  return _impl_.test_.Release();
-}
-inline void SynchService::set_allocated_test(std::string* value) {
-  _impl_.test_.SetAllocated(value, GetArenaForAllocation());
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-        if (_impl_.test_.IsDefault()) {
-          _impl_.test_.Set("", GetArenaForAllocation());
-        }
-  #endif  // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:csce662.SynchService.test)
-}
-
-// -------------------------------------------------------------------
-
-// PathAndData
-
-// string path = 1;
-inline void PathAndData::clear_path() {
-  _impl_.path_.ClearToEmpty();
-}
-inline const std::string& PathAndData::path() const {
-  // @@protoc_insertion_point(field_get:csce662.PathAndData.path)
-  return _internal_path();
-}
-template <typename Arg_, typename... Args_>
-inline PROTOBUF_ALWAYS_INLINE void PathAndData::set_path(Arg_&& arg,
-                                                     Args_... args) {
-  ;
-  _impl_.path_.Set(static_cast<Arg_&&>(arg), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:csce662.PathAndData.path)
-}
-inline std::string* PathAndData::mutable_path() {
-  std::string* _s = _internal_mutable_path();
-  // @@protoc_insertion_point(field_mutable:csce662.PathAndData.path)
-  return _s;
-}
-inline const std::string& PathAndData::_internal_path() const {
-  return _impl_.path_.Get();
-}
-inline void PathAndData::_internal_set_path(const std::string& value) {
-  ;
-
-
-  _impl_.path_.Set(value, GetArenaForAllocation());
-}
-inline std::string* PathAndData::_internal_mutable_path() {
-  ;
-  return _impl_.path_.Mutable( GetArenaForAllocation());
-}
-inline std::string* PathAndData::release_path() {
-  // @@protoc_insertion_point(field_release:csce662.PathAndData.path)
-  return _impl_.path_.Release();
-}
-inline void PathAndData::set_allocated_path(std::string* value) {
-  _impl_.path_.SetAllocated(value, GetArenaForAllocation());
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-        if (_impl_.path_.IsDefault()) {
-          _impl_.path_.Set("", GetArenaForAllocation());
-        }
-  #endif  // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:csce662.PathAndData.path)
-}
-
-// string data = 2;
-inline void PathAndData::clear_data() {
-  _impl_.data_.ClearToEmpty();
-}
-inline const std::string& PathAndData::data() const {
-  // @@protoc_insertion_point(field_get:csce662.PathAndData.data)
-  return _internal_data();
-}
-template <typename Arg_, typename... Args_>
-inline PROTOBUF_ALWAYS_INLINE void PathAndData::set_data(Arg_&& arg,
-                                                     Args_... args) {
-  ;
-  _impl_.data_.Set(static_cast<Arg_&&>(arg), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:csce662.PathAndData.data)
-}
-inline std::string* PathAndData::mutable_data() {
-  std::string* _s = _internal_mutable_data();
-  // @@protoc_insertion_point(field_mutable:csce662.PathAndData.data)
-  return _s;
-}
-inline const std::string& PathAndData::_internal_data() const {
-  return _impl_.data_.Get();
-}
-inline void PathAndData::_internal_set_data(const std::string& value) {
-  ;
-
-
-  _impl_.data_.Set(value, GetArenaForAllocation());
-}
-inline std::string* PathAndData::_internal_mutable_data() {
-  ;
-  return _impl_.data_.Mutable( GetArenaForAllocation());
-}
-inline std::string* PathAndData::release_data() {
-  // @@protoc_insertion_point(field_release:csce662.PathAndData.data)
-  return _impl_.data_.Release();
-}
-inline void PathAndData::set_allocated_data(std::string* value) {
-  _impl_.data_.SetAllocated(value, GetArenaForAllocation());
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-        if (_impl_.data_.IsDefault()) {
-          _impl_.data_.Set("", GetArenaForAllocation());
-        }
-  #endif  // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:csce662.PathAndData.data)
-}
-
-// -------------------------------------------------------------------
-
-// Path
-
-// string path = 1;
-inline void Path::clear_path() {
-  _impl_.path_.ClearToEmpty();
-}
-inline const std::string& Path::path() const {
-  // @@protoc_insertion_point(field_get:csce662.Path.path)
-  return _internal_path();
-}
-template <typename Arg_, typename... Args_>
-inline PROTOBUF_ALWAYS_INLINE void Path::set_path(Arg_&& arg,
-                                                     Args_... args) {
-  ;
-  _impl_.path_.Set(static_cast<Arg_&&>(arg), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:csce662.Path.path)
-}
-inline std::string* Path::mutable_path() {
-  std::string* _s = _internal_mutable_path();
-  // @@protoc_insertion_point(field_mutable:csce662.Path.path)
-  return _s;
-}
-inline const std::string& Path::_internal_path() const {
-  return _impl_.path_.Get();
-}
-inline void Path::_internal_set_path(const std::string& value) {
-  ;
-
-
-  _impl_.path_.Set(value, GetArenaForAllocation());
-}
-inline std::string* Path::_internal_mutable_path() {
-  ;
-  return _impl_.path_.Mutable( GetArenaForAllocation());
-}
-inline std::string* Path::release_path() {
-  // @@protoc_insertion_point(field_release:csce662.Path.path)
-  return _impl_.path_.Release();
-}
-inline void Path::set_allocated_path(std::string* value) {
-  _impl_.path_.SetAllocated(value, GetArenaForAllocation());
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-        if (_impl_.path_.IsDefault()) {
-          _impl_.path_.Set("", GetArenaForAllocation());
-        }
-  #endif  // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:csce662.Path.path)
-}
-
-// -------------------------------------------------------------------
-
-// Status
+// TLFL
 
 // bool status = 1;
-inline void Status::clear_status() {
+inline void TLFL::clear_status() {
   _impl_.status_ = false;
 }
-inline bool Status::status() const {
-  // @@protoc_insertion_point(field_get:csce662.Status.status)
+inline bool TLFL::status() const {
+  // @@protoc_insertion_point(field_get:csce662.TLFL.status)
   return _internal_status();
 }
-inline void Status::set_status(bool value) {
+inline void TLFL::set_status(bool value) {
   _internal_set_status(value);
-  // @@protoc_insertion_point(field_set:csce662.Status.status)
+  // @@protoc_insertion_point(field_set:csce662.TLFL.status)
 }
-inline bool Status::_internal_status() const {
+inline bool TLFL::_internal_status() const {
   return _impl_.status_;
 }
-inline void Status::_internal_set_status(bool value) {
+inline void TLFL::_internal_set_status(bool value) {
   ;
   _impl_.status_ = value;
+}
+
+// repeated string TL = 2;
+inline int TLFL::_internal_tl_size() const {
+  return _impl_.tl_.size();
+}
+inline int TLFL::tl_size() const {
+  return _internal_tl_size();
+}
+inline void TLFL::clear_tl() {
+  _internal_mutable_tl()->Clear();
+}
+inline std::string* TLFL::add_tl() {
+  std::string* _s = _internal_add_tl();
+  // @@protoc_insertion_point(field_add_mutable:csce662.TLFL.TL)
+  return _s;
+}
+inline const std::string& TLFL::tl(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.TLFL.TL)
+  return _internal_tl(index);
+}
+inline std::string* TLFL::mutable_tl(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.TLFL.TL)
+  return _internal_mutable_tl()->Mutable(index);
+}
+inline void TLFL::set_tl(int index, const std::string& value) {
+  _internal_mutable_tl()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.TLFL.TL)
+}
+inline void TLFL::set_tl(int index, std::string&& value) {
+  _internal_mutable_tl()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.TLFL.TL)
+}
+inline void TLFL::set_tl(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_tl()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.TLFL.TL)
+}
+inline void TLFL::set_tl(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_tl()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.TLFL.TL)
+}
+inline void TLFL::set_tl(int index, absl::string_view value) {
+  _internal_mutable_tl()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.TLFL.TL)
+}
+inline void TLFL::add_tl(const std::string& value) {
+  _internal_mutable_tl()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.TLFL.TL)
+}
+inline void TLFL::add_tl(std::string&& value) {
+  _internal_mutable_tl()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.TLFL.TL)
+}
+inline void TLFL::add_tl(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_tl()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.TLFL.TL)
+}
+inline void TLFL::add_tl(const char* value, std::size_t size) {
+  _internal_mutable_tl()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.TLFL.TL)
+}
+inline void TLFL::add_tl(absl::string_view value) {
+  _internal_mutable_tl()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.TLFL.TL)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+TLFL::tl() const {
+  // @@protoc_insertion_point(field_list:csce662.TLFL.TL)
+  return _internal_tl();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* TLFL::mutable_tl() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.TLFL.TL)
+  return _internal_mutable_tl();
+}
+inline const std::string& TLFL::_internal_tl(int index) const {
+  return _internal_tl().Get(index);
+}
+inline std::string* TLFL::_internal_add_tl() {
+  return _internal_mutable_tl()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+TLFL::_internal_tl() const {
+  return _impl_.tl_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+TLFL::_internal_mutable_tl() {
+  return &_impl_.tl_;
+}
+
+// repeated string FL = 3;
+inline int TLFL::_internal_fl_size() const {
+  return _impl_.fl_.size();
+}
+inline int TLFL::fl_size() const {
+  return _internal_fl_size();
+}
+inline void TLFL::clear_fl() {
+  _internal_mutable_fl()->Clear();
+}
+inline std::string* TLFL::add_fl() {
+  std::string* _s = _internal_add_fl();
+  // @@protoc_insertion_point(field_add_mutable:csce662.TLFL.FL)
+  return _s;
+}
+inline const std::string& TLFL::fl(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.TLFL.FL)
+  return _internal_fl(index);
+}
+inline std::string* TLFL::mutable_fl(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.TLFL.FL)
+  return _internal_mutable_fl()->Mutable(index);
+}
+inline void TLFL::set_fl(int index, const std::string& value) {
+  _internal_mutable_fl()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.TLFL.FL)
+}
+inline void TLFL::set_fl(int index, std::string&& value) {
+  _internal_mutable_fl()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.TLFL.FL)
+}
+inline void TLFL::set_fl(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_fl()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.TLFL.FL)
+}
+inline void TLFL::set_fl(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_fl()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.TLFL.FL)
+}
+inline void TLFL::set_fl(int index, absl::string_view value) {
+  _internal_mutable_fl()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.TLFL.FL)
+}
+inline void TLFL::add_fl(const std::string& value) {
+  _internal_mutable_fl()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.TLFL.FL)
+}
+inline void TLFL::add_fl(std::string&& value) {
+  _internal_mutable_fl()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.TLFL.FL)
+}
+inline void TLFL::add_fl(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_fl()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.TLFL.FL)
+}
+inline void TLFL::add_fl(const char* value, std::size_t size) {
+  _internal_mutable_fl()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.TLFL.FL)
+}
+inline void TLFL::add_fl(absl::string_view value) {
+  _internal_mutable_fl()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.TLFL.FL)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+TLFL::fl() const {
+  // @@protoc_insertion_point(field_list:csce662.TLFL.FL)
+  return _internal_fl();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* TLFL::mutable_fl() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.TLFL.FL)
+  return _internal_mutable_fl();
+}
+inline const std::string& TLFL::_internal_fl(int index) const {
+  return _internal_fl().Get(index);
+}
+inline std::string* TLFL::_internal_add_fl() {
+  return _internal_mutable_fl()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+TLFL::_internal_fl() const {
+  return _impl_.fl_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+TLFL::_internal_mutable_fl() {
+  return &_impl_.fl_;
+}
+
+// -------------------------------------------------------------------
+
+// AllUsers
+
+// repeated string users = 1;
+inline int AllUsers::_internal_users_size() const {
+  return _impl_.users_.size();
+}
+inline int AllUsers::users_size() const {
+  return _internal_users_size();
+}
+inline void AllUsers::clear_users() {
+  _internal_mutable_users()->Clear();
+}
+inline std::string* AllUsers::add_users() {
+  std::string* _s = _internal_add_users();
+  // @@protoc_insertion_point(field_add_mutable:csce662.AllUsers.users)
+  return _s;
+}
+inline const std::string& AllUsers::users(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.AllUsers.users)
+  return _internal_users(index);
+}
+inline std::string* AllUsers::mutable_users(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.AllUsers.users)
+  return _internal_mutable_users()->Mutable(index);
+}
+inline void AllUsers::set_users(int index, const std::string& value) {
+  _internal_mutable_users()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.AllUsers.users)
+}
+inline void AllUsers::set_users(int index, std::string&& value) {
+  _internal_mutable_users()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.AllUsers.users)
+}
+inline void AllUsers::set_users(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_users()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.AllUsers.users)
+}
+inline void AllUsers::set_users(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_users()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.AllUsers.users)
+}
+inline void AllUsers::set_users(int index, absl::string_view value) {
+  _internal_mutable_users()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.AllUsers.users)
+}
+inline void AllUsers::add_users(const std::string& value) {
+  _internal_mutable_users()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.AllUsers.users)
+}
+inline void AllUsers::add_users(std::string&& value) {
+  _internal_mutable_users()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.AllUsers.users)
+}
+inline void AllUsers::add_users(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_users()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.AllUsers.users)
+}
+inline void AllUsers::add_users(const char* value, std::size_t size) {
+  _internal_mutable_users()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.AllUsers.users)
+}
+inline void AllUsers::add_users(absl::string_view value) {
+  _internal_mutable_users()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.AllUsers.users)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+AllUsers::users() const {
+  // @@protoc_insertion_point(field_list:csce662.AllUsers.users)
+  return _internal_users();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* AllUsers::mutable_users() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.AllUsers.users)
+  return _internal_mutable_users();
+}
+inline const std::string& AllUsers::_internal_users(int index) const {
+  return _internal_users().Get(index);
+}
+inline std::string* AllUsers::_internal_add_users() {
+  return _internal_mutable_users()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+AllUsers::_internal_users() const {
+  return _impl_.users_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+AllUsers::_internal_mutable_users() {
+  return &_impl_.users_;
+}
+
+// -------------------------------------------------------------------
+
+// SynchronizerListReply
+
+// repeated string all_users = 1;
+inline int SynchronizerListReply::_internal_all_users_size() const {
+  return _impl_.all_users_.size();
+}
+inline int SynchronizerListReply::all_users_size() const {
+  return _internal_all_users_size();
+}
+inline void SynchronizerListReply::clear_all_users() {
+  _internal_mutable_all_users()->Clear();
+}
+inline std::string* SynchronizerListReply::add_all_users() {
+  std::string* _s = _internal_add_all_users();
+  // @@protoc_insertion_point(field_add_mutable:csce662.SynchronizerListReply.all_users)
+  return _s;
+}
+inline const std::string& SynchronizerListReply::all_users(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.SynchronizerListReply.all_users)
+  return _internal_all_users(index);
+}
+inline std::string* SynchronizerListReply::mutable_all_users(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.SynchronizerListReply.all_users)
+  return _internal_mutable_all_users()->Mutable(index);
+}
+inline void SynchronizerListReply::set_all_users(int index, const std::string& value) {
+  _internal_mutable_all_users()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::set_all_users(int index, std::string&& value) {
+  _internal_mutable_all_users()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::set_all_users(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_all_users()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::set_all_users(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_all_users()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::set_all_users(int index, absl::string_view value) {
+  _internal_mutable_all_users()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::add_all_users(const std::string& value) {
+  _internal_mutable_all_users()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::add_all_users(std::string&& value) {
+  _internal_mutable_all_users()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::add_all_users(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_all_users()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::add_all_users(const char* value, std::size_t size) {
+  _internal_mutable_all_users()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.SynchronizerListReply.all_users)
+}
+inline void SynchronizerListReply::add_all_users(absl::string_view value) {
+  _internal_mutable_all_users()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.SynchronizerListReply.all_users)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+SynchronizerListReply::all_users() const {
+  // @@protoc_insertion_point(field_list:csce662.SynchronizerListReply.all_users)
+  return _internal_all_users();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* SynchronizerListReply::mutable_all_users() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.SynchronizerListReply.all_users)
+  return _internal_mutable_all_users();
+}
+inline const std::string& SynchronizerListReply::_internal_all_users(int index) const {
+  return _internal_all_users().Get(index);
+}
+inline std::string* SynchronizerListReply::_internal_add_all_users() {
+  return _internal_mutable_all_users()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+SynchronizerListReply::_internal_all_users() const {
+  return _impl_.all_users_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+SynchronizerListReply::_internal_mutable_all_users() {
+  return &_impl_.all_users_;
+}
+
+// repeated string followers = 2;
+inline int SynchronizerListReply::_internal_followers_size() const {
+  return _impl_.followers_.size();
+}
+inline int SynchronizerListReply::followers_size() const {
+  return _internal_followers_size();
+}
+inline void SynchronizerListReply::clear_followers() {
+  _internal_mutable_followers()->Clear();
+}
+inline std::string* SynchronizerListReply::add_followers() {
+  std::string* _s = _internal_add_followers();
+  // @@protoc_insertion_point(field_add_mutable:csce662.SynchronizerListReply.followers)
+  return _s;
+}
+inline const std::string& SynchronizerListReply::followers(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.SynchronizerListReply.followers)
+  return _internal_followers(index);
+}
+inline std::string* SynchronizerListReply::mutable_followers(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.SynchronizerListReply.followers)
+  return _internal_mutable_followers()->Mutable(index);
+}
+inline void SynchronizerListReply::set_followers(int index, const std::string& value) {
+  _internal_mutable_followers()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::set_followers(int index, std::string&& value) {
+  _internal_mutable_followers()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::set_followers(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_followers()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::set_followers(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_followers()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::set_followers(int index, absl::string_view value) {
+  _internal_mutable_followers()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::add_followers(const std::string& value) {
+  _internal_mutable_followers()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::add_followers(std::string&& value) {
+  _internal_mutable_followers()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::add_followers(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_followers()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::add_followers(const char* value, std::size_t size) {
+  _internal_mutable_followers()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.SynchronizerListReply.followers)
+}
+inline void SynchronizerListReply::add_followers(absl::string_view value) {
+  _internal_mutable_followers()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.SynchronizerListReply.followers)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+SynchronizerListReply::followers() const {
+  // @@protoc_insertion_point(field_list:csce662.SynchronizerListReply.followers)
+  return _internal_followers();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* SynchronizerListReply::mutable_followers() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.SynchronizerListReply.followers)
+  return _internal_mutable_followers();
+}
+inline const std::string& SynchronizerListReply::_internal_followers(int index) const {
+  return _internal_followers().Get(index);
+}
+inline std::string* SynchronizerListReply::_internal_add_followers() {
+  return _internal_mutable_followers()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+SynchronizerListReply::_internal_followers() const {
+  return _impl_.followers_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+SynchronizerListReply::_internal_mutable_followers() {
+  return &_impl_.followers_;
+}
+
+// -------------------------------------------------------------------
+
+// ServerList
+
+// repeated int32 serverID = 1;
+inline int ServerList::_internal_serverid_size() const {
+  return _impl_.serverid_.size();
+}
+inline int ServerList::serverid_size() const {
+  return _internal_serverid_size();
+}
+inline void ServerList::clear_serverid() {
+  _internal_mutable_serverid()->Clear();
+}
+inline ::int32_t ServerList::serverid(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.ServerList.serverID)
+  return _internal_serverid(index);
+}
+inline void ServerList::set_serverid(int index, ::int32_t value) {
+  _internal_mutable_serverid()->Set(index, value);
+  // @@protoc_insertion_point(field_set:csce662.ServerList.serverID)
+}
+inline void ServerList::add_serverid(::int32_t value) {
+  _internal_add_serverid(value);
+  // @@protoc_insertion_point(field_add:csce662.ServerList.serverID)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>& ServerList::serverid() const {
+  // @@protoc_insertion_point(field_list:csce662.ServerList.serverID)
+  return _internal_serverid();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>* ServerList::mutable_serverid() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.ServerList.serverID)
+  return _internal_mutable_serverid();
+}
+
+inline ::int32_t ServerList::_internal_serverid(int index) const {
+  return _internal_serverid().Get(index);
+}
+inline void ServerList::_internal_add_serverid(::int32_t value) {
+  _internal_mutable_serverid()->Add(value);
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>& ServerList::_internal_serverid() const {
+  return _impl_.serverid_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedField<::int32_t>* ServerList::_internal_mutable_serverid() {
+  return &_impl_.serverid_;
+}
+
+// repeated string hostname = 2;
+inline int ServerList::_internal_hostname_size() const {
+  return _impl_.hostname_.size();
+}
+inline int ServerList::hostname_size() const {
+  return _internal_hostname_size();
+}
+inline void ServerList::clear_hostname() {
+  _internal_mutable_hostname()->Clear();
+}
+inline std::string* ServerList::add_hostname() {
+  std::string* _s = _internal_add_hostname();
+  // @@protoc_insertion_point(field_add_mutable:csce662.ServerList.hostname)
+  return _s;
+}
+inline const std::string& ServerList::hostname(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.ServerList.hostname)
+  return _internal_hostname(index);
+}
+inline std::string* ServerList::mutable_hostname(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.ServerList.hostname)
+  return _internal_mutable_hostname()->Mutable(index);
+}
+inline void ServerList::set_hostname(int index, const std::string& value) {
+  _internal_mutable_hostname()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.ServerList.hostname)
+}
+inline void ServerList::set_hostname(int index, std::string&& value) {
+  _internal_mutable_hostname()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.ServerList.hostname)
+}
+inline void ServerList::set_hostname(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_hostname()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.ServerList.hostname)
+}
+inline void ServerList::set_hostname(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_hostname()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.ServerList.hostname)
+}
+inline void ServerList::set_hostname(int index, absl::string_view value) {
+  _internal_mutable_hostname()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.ServerList.hostname)
+}
+inline void ServerList::add_hostname(const std::string& value) {
+  _internal_mutable_hostname()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.ServerList.hostname)
+}
+inline void ServerList::add_hostname(std::string&& value) {
+  _internal_mutable_hostname()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.ServerList.hostname)
+}
+inline void ServerList::add_hostname(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_hostname()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.ServerList.hostname)
+}
+inline void ServerList::add_hostname(const char* value, std::size_t size) {
+  _internal_mutable_hostname()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.ServerList.hostname)
+}
+inline void ServerList::add_hostname(absl::string_view value) {
+  _internal_mutable_hostname()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.ServerList.hostname)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ServerList::hostname() const {
+  // @@protoc_insertion_point(field_list:csce662.ServerList.hostname)
+  return _internal_hostname();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* ServerList::mutable_hostname() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.ServerList.hostname)
+  return _internal_mutable_hostname();
+}
+inline const std::string& ServerList::_internal_hostname(int index) const {
+  return _internal_hostname().Get(index);
+}
+inline std::string* ServerList::_internal_add_hostname() {
+  return _internal_mutable_hostname()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ServerList::_internal_hostname() const {
+  return _impl_.hostname_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+ServerList::_internal_mutable_hostname() {
+  return &_impl_.hostname_;
+}
+
+// repeated string port = 3;
+inline int ServerList::_internal_port_size() const {
+  return _impl_.port_.size();
+}
+inline int ServerList::port_size() const {
+  return _internal_port_size();
+}
+inline void ServerList::clear_port() {
+  _internal_mutable_port()->Clear();
+}
+inline std::string* ServerList::add_port() {
+  std::string* _s = _internal_add_port();
+  // @@protoc_insertion_point(field_add_mutable:csce662.ServerList.port)
+  return _s;
+}
+inline const std::string& ServerList::port(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.ServerList.port)
+  return _internal_port(index);
+}
+inline std::string* ServerList::mutable_port(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.ServerList.port)
+  return _internal_mutable_port()->Mutable(index);
+}
+inline void ServerList::set_port(int index, const std::string& value) {
+  _internal_mutable_port()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.ServerList.port)
+}
+inline void ServerList::set_port(int index, std::string&& value) {
+  _internal_mutable_port()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.ServerList.port)
+}
+inline void ServerList::set_port(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_port()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.ServerList.port)
+}
+inline void ServerList::set_port(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_port()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.ServerList.port)
+}
+inline void ServerList::set_port(int index, absl::string_view value) {
+  _internal_mutable_port()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.ServerList.port)
+}
+inline void ServerList::add_port(const std::string& value) {
+  _internal_mutable_port()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.ServerList.port)
+}
+inline void ServerList::add_port(std::string&& value) {
+  _internal_mutable_port()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.ServerList.port)
+}
+inline void ServerList::add_port(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_port()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.ServerList.port)
+}
+inline void ServerList::add_port(const char* value, std::size_t size) {
+  _internal_mutable_port()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.ServerList.port)
+}
+inline void ServerList::add_port(absl::string_view value) {
+  _internal_mutable_port()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.ServerList.port)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ServerList::port() const {
+  // @@protoc_insertion_point(field_list:csce662.ServerList.port)
+  return _internal_port();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* ServerList::mutable_port() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.ServerList.port)
+  return _internal_mutable_port();
+}
+inline const std::string& ServerList::_internal_port(int index) const {
+  return _internal_port().Get(index);
+}
+inline std::string* ServerList::_internal_add_port() {
+  return _internal_mutable_port()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ServerList::_internal_port() const {
+  return _impl_.port_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+ServerList::_internal_mutable_port() {
+  return &_impl_.port_;
+}
+
+// repeated string type = 4;
+inline int ServerList::_internal_type_size() const {
+  return _impl_.type_.size();
+}
+inline int ServerList::type_size() const {
+  return _internal_type_size();
+}
+inline void ServerList::clear_type() {
+  _internal_mutable_type()->Clear();
+}
+inline std::string* ServerList::add_type() {
+  std::string* _s = _internal_add_type();
+  // @@protoc_insertion_point(field_add_mutable:csce662.ServerList.type)
+  return _s;
+}
+inline const std::string& ServerList::type(int index) const {
+  // @@protoc_insertion_point(field_get:csce662.ServerList.type)
+  return _internal_type(index);
+}
+inline std::string* ServerList::mutable_type(int index) {
+  // @@protoc_insertion_point(field_mutable:csce662.ServerList.type)
+  return _internal_mutable_type()->Mutable(index);
+}
+inline void ServerList::set_type(int index, const std::string& value) {
+  _internal_mutable_type()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:csce662.ServerList.type)
+}
+inline void ServerList::set_type(int index, std::string&& value) {
+  _internal_mutable_type()->Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:csce662.ServerList.type)
+}
+inline void ServerList::set_type(int index, const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_type()->Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:csce662.ServerList.type)
+}
+inline void ServerList::set_type(int index, const char* value,
+                              std::size_t size) {
+  _internal_mutable_type()->Mutable(index)->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:csce662.ServerList.type)
+}
+inline void ServerList::set_type(int index, absl::string_view value) {
+  _internal_mutable_type()->Mutable(index)->assign(value.data(),
+                                                     value.size());
+  // @@protoc_insertion_point(field_set_string_piece:csce662.ServerList.type)
+}
+inline void ServerList::add_type(const std::string& value) {
+  _internal_mutable_type()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add:csce662.ServerList.type)
+}
+inline void ServerList::add_type(std::string&& value) {
+  _internal_mutable_type()->Add(std::move(value));
+  // @@protoc_insertion_point(field_add:csce662.ServerList.type)
+}
+inline void ServerList::add_type(const char* value) {
+  ABSL_DCHECK(value != nullptr);
+  _internal_mutable_type()->Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:csce662.ServerList.type)
+}
+inline void ServerList::add_type(const char* value, std::size_t size) {
+  _internal_mutable_type()->Add()->assign(
+      reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:csce662.ServerList.type)
+}
+inline void ServerList::add_type(absl::string_view value) {
+  _internal_mutable_type()->Add()->assign(value.data(), value.size());
+  // @@protoc_insertion_point(field_add_string_piece:csce662.ServerList.type)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ServerList::type() const {
+  // @@protoc_insertion_point(field_list:csce662.ServerList.type)
+  return _internal_type();
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* ServerList::mutable_type() {
+  // @@protoc_insertion_point(field_mutable_list:csce662.ServerList.type)
+  return _internal_mutable_type();
+}
+inline const std::string& ServerList::_internal_type(int index) const {
+  return _internal_type().Get(index);
+}
+inline std::string* ServerList::_internal_add_type() {
+  return _internal_mutable_type()->Add();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+ServerList::_internal_type() const {
+  return _impl_.type_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+ServerList::_internal_mutable_type() {
+  return &_impl_.type_;
 }
 
 #ifdef __GNUC__
