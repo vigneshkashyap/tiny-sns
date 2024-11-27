@@ -79,7 +79,7 @@ std::string coordAddr;
 std::string clusterSubdirectory;
 std::vector<std::string> otherHosts;
 std::unordered_map<std::string, int> timelineLengths;
-std::set<std::pair<std::string, std::string>> publishedMessages;
+
 
 std::vector<std::string> get_lines_from_file(std::string);
 std::vector<std::string> get_all_users_func(int);
@@ -98,6 +98,7 @@ class SynchronizerRabbitMQ {
     std::string hostname;
     int port;
     int synchID;
+    std::set<std::string> publishedMessages;
 
     void setupRabbitMQ() {
         conn = amqp_new_connection();
@@ -152,6 +153,10 @@ class SynchronizerRabbitMQ {
         declareQueue("synch" + std::to_string(synchID) + "_clients_relations_queue");
         declareQueue("synch" + std::to_string(synchID) + "_timeline_queue");
         // TODO: add or modify what kind of queues exist in your clusters based on your needs
+    }
+    std::string generateHash(const std::string &message) {
+        std::hash<std::string> hasher;
+        return std::to_string(hasher(message));
     }
 
     void publishUserList() {
@@ -315,9 +320,11 @@ class SynchronizerRabbitMQ {
                 }
                 // Serialize the timeline updates into a JSON message
                 std::string message = serializeTimelineToJson(follower, timeline);
-
                 // Determine the message queue for the synchronizer responsible for this follower
                 int follower_cluster = ((followerId - 1) % 3) + 1;
+                if (follower_cluster == clusterID) {
+                    continue;
+                }
                 std::string queueName = "synch" + std::to_string(follower_cluster) + "_timeline_queue";
                 std::string slaveQueueName = "synch" + std::to_string(follower_cluster + 3) + "_timeline_queue";
 
@@ -326,11 +333,19 @@ class SynchronizerRabbitMQ {
 
                 // Check if the pair already exists in the set
                 if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
+                    if (synchID == 5 && follower_cluster == 3) {
+                        std::cerr << "Follower:\t" << followerId << queueName << "Message Fuck:\t" << message << std::endl;
+                    }
+
                     log(INFO, "Message\t" + message + " inserted into " + queueName);
                     publishMessage(queueName, message);          // Publish the message
                     publishedMessages.insert(messageQueuePair);  // Add to the set
                 }
                 if (publishedMessages.find(slaveMessageQueuePair) == publishedMessages.end()) {
+                    if (synchID == 5 && follower_cluster == 3) {
+                        std::cerr << "Follower:\t" << followerId << queueName << "Message Fuck:\t" << message << std::endl;
+                    }
+
                     log(INFO, "Message\t" + message + " inserted into " + slaveQueueName);
                     publishMessage(slaveQueueName, message);          // Publish the message
                     publishedMessages.insert(slaveMessageQueuePair);  // Add to the set
@@ -375,9 +390,9 @@ class SynchronizerRabbitMQ {
 
     // For each client in your cluster, consume messages from your timeline queue and modify your client's timeline files based on what the users they follow posted to their timeline
     void consumeTimeline(Json::Value root) {
-        printJsonValue(root);
+        // printJsonValue(root);
 
-        std::cout << "Parsing completed successfully." << std::endl;
+        // std::cout << "Parsing completed successfully." << std::endl;
 
         // Process each follower's updates
         for (const auto &followerId : root.getMemberNames()) {

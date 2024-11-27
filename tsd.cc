@@ -88,6 +88,7 @@ struct Client {
     std::vector<Client *> client_followers;
     std::vector<Client *> client_following;
     bool isInitialTimelineRequest = true;
+    std::thread monitorThread;
     ServerReaderWriter<Message, Message> *stream = 0;
     bool operator==(const Client &c1) const { return (username == c1.username); }
 };
@@ -100,6 +101,7 @@ struct Post {
 
 // Vector that stores every client that has been created
 std::vector<Client *> client_db;
+
 
 class CoordinationService {
    private:
@@ -861,8 +863,22 @@ class SNSServiceImpl final : public SNSService::Service {
         follower.close();
     }
 
+    int getLastProcessedLine(const std::string &username) {
+        std::lock_guard<std::mutex> lock(lineMutex);
+        auto it = lastProcessedLine.find(username);
+        if (it != lastProcessedLine.end()) {
+            return it->second;
+        }
+        return 0;  // Default to 0 if no entry exists
+    }
+
+    void setLastProcessedLine(const std::string &username, int line) {
+        std::lock_guard<std::mutex> lock(lineMutex);
+        lastProcessedLine[username] = line;
+    }
+
     // Helper method that uses the ServerReaderWriter stream of client, and Client, to get Timeline Posts, sort by timestamp and write them to client
-    void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user, std::unordered_map<std::string, int> &lastProcessedLine) {
+    void displayTimeline(ServerReaderWriter<Message, Message> *stream, Client *user) {
         std::string timeline_path = coordinationService->filePrefix(user->username) + "_timeline.txt";
         std::vector<Post> posts = parseFileContentForPosts(timeline_path);
         // boolean compare method to sort by larger timestamp
@@ -885,29 +901,41 @@ class SNSServiceImpl final : public SNSService::Service {
             stream->Write(msg);
         }
         log(INFO, "GetTimeline Successful:\tUser " + user->username + " has " + std::to_string(posts_size) + " posts");
-        lastProcessedLine[user->username] = posts_size * 4;
+        // lastProcessedLine[user->username] = posts_size * 4;
+        setLastProcessedLine(user->username, posts_size * 4);
     }
 
-    void monitorTimelineUpdates(Client *user, ServerReaderWriter<Message, Message> *stream, std::unordered_map<std::string, int> &lastProcessedLine) {
+    void monitorTimelineUpdates(Client *user, ServerReaderWriter<Message, Message> *stream) {
         std::string timelineFile = coordinationService->filePrefix(user->username) + "_timeline.txt";
-        log(INFO, "Started monitoring updates for User " + user->username)
-        while (user->connected) {
+        log(INFO, "Started monitoring updates for User " + user->username) while (user->connected) {
             std::this_thread::sleep_for(std::chrono::seconds(10));  // Wait for 5 seconds
 
-            int start_line = lastProcessedLine[user->username];
+            // int start_line = lastProcessedLine[user->username];
+            int start_line = getLastProcessedLine(user->username);
             std::vector<Post> newPosts = parseFileContentForPosts(timelineFile, start_line);
 
             // Send new posts over the stream
             for (const auto &post : newPosts) {
+                if (!user->connected || user->stream == nullptr) {
+                    log(INFO, "User " + user->username + " disconnected while sending posts.");
+                    break;
+                }
                 Message msg;
                 msg.set_allocated_timestamp(createProtoTimestampFromEpoch(post.timestamp));
                 msg.set_username(post.username);
                 msg.set_msg(post.content);
-                stream->Write(msg);
+                // stream->Write(msg);
+                // Write to the stream safely
+                if (!stream->Write(msg)) {
+                    log(WARNING, "Stream write failed for User " + user->username);
+                    user->connected = false;
+                    return;  // Exit thread if the stream fails
+                }
                 log(INFO, "Sent new post to User " + user->username + ": " + post.content);
             }
             // Update the last processed line count
-            lastProcessedLine[user->username] += newPosts.size() * 4;  // Each post has 3 lines + 1 blank line
+            // lastProcessedLine[user->username] += newPosts.size() * 4;  // Each post has 3 lines + 1 blank line
+            setLastProcessedLine(user->username, start_line + newPosts.size() * 4);
         }
         log(INFO, "Stopped monitoring updates for User " + user->username);
     }
@@ -927,10 +955,12 @@ class SNSServiceImpl final : public SNSService::Service {
         }
     }
 
+std::unordered_map<std::string, int> lastProcessedLine;
+std::mutex lineMutex; // Mutex to protect access to lastProcessedLine
+
     Status Timeline(ServerContext *context, ServerReaderWriter<Message, Message> *stream) override {
         Message message;
         Client *user = nullptr;
-        std::unordered_map<std::string, int> lastProcessedLine;
 
         while (stream->Read(&message)) {
             user = getClient(message.username());
@@ -940,12 +970,18 @@ class SNSServiceImpl final : public SNSService::Service {
             if (user->isInitialTimelineRequest) {
                 user->connected = true;
                 log(INFO, "Timeline Request:\t\tUser " + message.username());
-                displayTimeline(stream, user, lastProcessedLine);
+                displayTimeline(stream, user);
 
                 // Spawn a thread to monitor timeline updates
-                std::thread monitorThread([this, user, stream, &lastProcessedLine]() { this->monitorTimelineUpdates(user, stream, lastProcessedLine); });
+                // std::thread monitorThread([this, user, stream, &lastProcessedLine]() { this->monitorTimelineUpdates(user, stream, lastProcessedLine); });
+                if (user->monitorThread.joinable()) {
+                user->monitorThread.join(); // Ensure no stale thread is running
+            }
+            user->monitorThread = std::thread([this, user, stream]() {
+                this->monitorTimelineUpdates(user, stream);
+            });
 
-                monitorThread.detach();  // Detach the thread to allow it to run independently
+                // monitorThread.detach();  // Detach the thread to allow it to run independently
 
                 user->isInitialTimelineRequest = false;
             } else {
@@ -954,8 +990,15 @@ class SNSServiceImpl final : public SNSService::Service {
                 makePost(message, user);
             }
         }
-
-        user->connected = false;  // Mark the user as disconnected
+        // Handle disconnection
+        if (user) {
+            user->connected = false;  // Mark user as disconnected
+            if (user->monitorThread.joinable()) {
+                user->monitorThread.join();  // Ensure thread is joined safely
+            }
+            user->isInitialTimelineRequest = true;
+            log(INFO, "User " + user->username + " disconnected.");
+        }
         return Status::OK;
     }
 };
