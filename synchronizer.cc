@@ -80,7 +80,6 @@ std::string clusterSubdirectory;
 std::vector<std::string> otherHosts;
 std::unordered_map<std::string, int> timelineLengths;
 
-
 std::vector<std::string> get_lines_from_file(std::string);
 std::vector<std::string> get_all_users_func(int);
 std::vector<std::string> get_tl_or_fl(int, int, bool);
@@ -176,12 +175,12 @@ class SynchronizerRabbitMQ {
                 continue;
             }
             std::string queueName = "synch" + std::to_string(i) + "_users_queue";
-            auto messageQueuePair = std::make_pair(queueName, message);
+            std::string messageHash = generateHash(message + queueName);
 
             // Check if the pair already exists in the set
-            if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
-                publishMessage(queueName, message);          // Publish the message
-                publishedMessages.insert(messageQueuePair);  // Add to the set
+            if (publishedMessages.find(messageHash) == publishedMessages.end()) {
+                publishMessage(queueName, message);     // Publish the message
+                publishedMessages.insert(messageHash);  // Add to the set
             }
         }
     }
@@ -266,12 +265,11 @@ class SynchronizerRabbitMQ {
                 continue;
             }
             std::string queueName = "synch" + std::to_string(i) + "_users_queue";
-            auto messageQueuePair = std::make_pair(queueName, message);
-
+            std::string messageHash = generateHash(message + queueName);
             // Check if the pair already exists in the set
-            if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
-                publishMessage(queueName, message);          // Publish the message
-                publishedMessages.insert(messageQueuePair);  // Add to the set
+            if (publishedMessages.find(messageHash) == publishedMessages.end()) {
+                publishMessage(queueName, message);     // Publish the message
+                publishedMessages.insert(messageHash);  // Add to the set
             }
         }
     }
@@ -314,41 +312,42 @@ class SynchronizerRabbitMQ {
             for (const auto &follower : followers) {
                 // Convert follower to integer
                 int followerId = std::stoi(follower);
-                std::vector<std::string> timeline = get_tl_or_fl(synchID, followerId, true);
-                if (timeline.size() == 0) {
-                    continue;
-                }
-                // Serialize the timeline updates into a JSON message
-                std::string message = serializeTimelineToJson(follower, timeline);
-                // Determine the message queue for the synchronizer responsible for this follower
                 int follower_cluster = ((followerId - 1) % 3) + 1;
                 if (follower_cluster == clusterID) {
                     continue;
                 }
+
+                std::vector<std::string> timeline = get_tl_or_fl(synchID, followerId, true);
+                if (timeline.empty()) {
+                    continue;
+                }
+                // Serialize the timeline updates into a JSON message
+                std::string message = serializeTimelineToJson(follower, timeline);
                 std::string queueName = "synch" + std::to_string(follower_cluster) + "_timeline_queue";
                 std::string slaveQueueName = "synch" + std::to_string(follower_cluster + 3) + "_timeline_queue";
-
-                auto messageQueuePair = std::make_pair(queueName, message);
-                auto slaveMessageQueuePair = std::make_pair(slaveQueueName, message);
+                std::string selfSlaveSyncQueue = "synch" + std::to_string(client_cluster + 3) + "_timeline_queue";
+                if (client_cluster != synchID) {
+                    selfSlaveSyncQueue = "synch" + std::to_string(client_cluster) + "_timeline_queue";
+                }
+                std::string messageHash = generateHash(message + queueName);
+                std::string slaveMmessageHash = generateHash(message + slaveQueueName);
+                std::string sendToSlaveHash = generateHash(message + selfSlaveSyncQueue);
 
                 // Check if the pair already exists in the set
-                if (publishedMessages.find(messageQueuePair) == publishedMessages.end()) {
-                    if (synchID == 5 && follower_cluster == 3) {
-                        std::cerr << "Follower:\t" << followerId << queueName << "Message Fuck:\t" << message << std::endl;
-                    }
-
+                if (publishedMessages.find(messageHash) == publishedMessages.end()) {
                     log(INFO, "Message\t" + message + " inserted into " + queueName);
-                    publishMessage(queueName, message);          // Publish the message
-                    publishedMessages.insert(messageQueuePair);  // Add to the set
+                    publishMessage(queueName, message);     // Publish the message
+                    publishedMessages.insert(messageHash);  // Add to the set
                 }
-                if (publishedMessages.find(slaveMessageQueuePair) == publishedMessages.end()) {
-                    if (synchID == 5 && follower_cluster == 3) {
-                        std::cerr << "Follower:\t" << followerId << queueName << "Message Fuck:\t" << message << std::endl;
-                    }
-
+                if (publishedMessages.find(slaveMmessageHash) == publishedMessages.end()) {
                     log(INFO, "Message\t" + message + " inserted into " + slaveQueueName);
-                    publishMessage(slaveQueueName, message);          // Publish the message
-                    publishedMessages.insert(slaveMessageQueuePair);  // Add to the set
+                    publishMessage(slaveQueueName, message);      // Publish the message
+                    publishedMessages.insert(slaveMmessageHash);  // Add to the set
+                }
+                if (publishedMessages.find(sendToSlaveHash) == publishedMessages.end()) {
+                    log(INFO, "Message\t" + message + " inserted into " + selfSlaveSyncQueue);
+                    publishMessage(selfSlaveSyncQueue, message);  // Publish the message
+                    publishedMessages.insert(sendToSlaveHash);    // Add to the set
                 }
             }
         }
@@ -390,10 +389,6 @@ class SynchronizerRabbitMQ {
 
     // For each client in your cluster, consume messages from your timeline queue and modify your client's timeline files based on what the users they follow posted to their timeline
     void consumeTimeline(Json::Value root) {
-        // printJsonValue(root);
-
-        // std::cout << "Parsing completed successfully." << std::endl;
-
         // Process each follower's updates
         for (const auto &followerId : root.getMemberNames()) {
             const Json::Value &updates = root[followerId];
@@ -451,9 +446,9 @@ class SynchronizerRabbitMQ {
             std::ofstream outfile(filename, std::ios::app);
             outfile << newUpdate << "\n\n";  // Add a newline after each set of updates
             outfile.close();
-            std::cout << "Appended new update " << update[2] << " to " << filename << std::endl;
+            log(INFO, "Appended new update " + update[2] + " to " + filename)
         } else {
-            std::cout << "Update " << update[2] << " exists in " << filename << std::endl;
+            log(INFO, "Update " + update[2] + " exists in " + filename)
         }
     }
 
